@@ -1,0 +1,120 @@
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  Package, 
+  Wrench, 
+  Truck, 
+  Users, 
+  LayoutDashboard, 
+  HandCoins,
+  ChevronLeft,
+  ChevronRight,
+  LogOut
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useApp } from '@/contexts/AppContext';
+import fesaLogo from '@/assets/fesa-logo.png';
+import fesaIcon from '@/assets/fesa-icon.png';
+
+const navigation = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Materiales', href: '/materials', icon: Package },
+  { name: 'Herramientas', href: '/tools', icon: Wrench },
+  { name: 'Préstamos', href: '/loans', icon: HandCoins },
+  { name: 'Vehículos', href: '/vehicles', icon: Truck },
+  { name: 'Usuarios', href: '/users', icon: Users, adminOnly: true },
+];
+
+export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+  const { currentUser, setCurrentUser } = useApp();
+
+  const filteredNav = navigation.filter(item => 
+    !item.adminOnly || currentUser?.role === 'admin'
+  );
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+  };
+
+  return (
+    <aside className={cn(
+      "fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 z-50 flex flex-col shadow-2xl",
+      collapsed ? "w-20" : "w-64"
+    )}>
+      {/* Logo */}
+      <div className="flex items-center justify-center h-20 border-b border-sidebar-border">
+        <img 
+          src={collapsed ? fesaIcon : fesaLogo} 
+          alt="FESA" 
+          className={cn(
+            "transition-all duration-300",
+            collapsed ? "h-10 w-10 object-contain" : "h-10"
+          )}
+        />
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
+        {filteredNav.map((item) => {
+          const isActive = location.pathname === item.href;
+          return (
+            <Link
+              key={item.name}
+              to={item.href}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group",
+                isActive 
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg" 
+                  : "hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground"
+              )}
+            >
+              <item.icon className={cn(
+                "h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110",
+                isActive && "animate-pulse-glow"
+              )} />
+              {!collapsed && (
+                <span className="font-medium truncate">{item.name}</span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User info */}
+      {currentUser && (
+        <div className={cn(
+          "px-3 py-4 border-t border-sidebar-border",
+          collapsed ? "text-center" : ""
+        )}>
+          {!collapsed && (
+            <div className="px-4 mb-3">
+              <p className="font-semibold text-sm truncate">{currentUser.name}</p>
+              <p className="text-xs text-sidebar-foreground/60 capitalize">{currentUser.role}</p>
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "flex items-center gap-3 px-4 py-2 rounded-lg transition-colors w-full",
+              "hover:bg-destructive/20 text-sidebar-foreground/70 hover:text-destructive",
+              collapsed && "justify-center"
+            )}
+          >
+            <LogOut className="h-5 w-5" />
+            {!collapsed && <span className="text-sm">Cerrar sesión</span>}
+          </button>
+        </div>
+      )}
+
+      {/* Collapse button */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute -right-3 top-24 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg hover:scale-110 transition-transform"
+      >
+        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      </button>
+    </aside>
+  );
+}
