@@ -6,12 +6,11 @@ import { DataTable, Column } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useApp } from '@/contexts/AppContext';
-import { Vehicle } from '@/types/inventory';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useVehicles, useDeleteVehicle, Vehicle } from '@/hooks/useDatabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { VehicleFormDialog } from '@/components/vehicles/VehicleFormDialog';
 import { MaintenanceFormDialog } from '@/components/vehicles/MaintenanceFormDialog';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,10 +21,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from 'sonner';
 
 export default function Vehicles() {
-  const { vehicles, deleteVehicle } = useApp();
+  const { userProfile } = useAuth();
+  const { data: vehicles = [], isLoading } = useVehicles();
+  const deleteVehicle = useDeleteVehicle();
+  
   const [search, setSearch] = useState('');
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
@@ -33,6 +34,9 @@ export default function Vehicles() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
+
+  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'supervisor';
+  const canDelete = userProfile?.role === 'admin';
 
   const filteredVehicles = vehicles.filter(v => 
     v.plate.toLowerCase().includes(search.toLowerCase()) ||
@@ -57,8 +61,7 @@ export default function Vehicles() {
 
   const confirmDelete = () => {
     if (vehicleToDelete) {
-      deleteVehicle(vehicleToDelete.id);
-      toast.success('Vehículo eliminado correctamente');
+      deleteVehicle.mutate(vehicleToDelete.id);
       setDeleteDialogOpen(false);
       setVehicleToDelete(null);
     }
@@ -88,17 +91,17 @@ export default function Vehicles() {
       render: (v) => (
         <div className="flex items-center gap-2">
           <Gauge className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{v.currentKm.toLocaleString()} km</span>
+          <span className="font-medium">{v.current_km.toLocaleString()} km</span>
         </div>
       )
     },
-    { key: 'assignedTo', header: 'Asignado a', render: (v) => v.assignedTo || '-' },
+    { key: 'assignedTo', header: 'Asignado a', render: (v) => v.assigned_to || '-' },
     { 
       key: 'maintenance', 
       header: 'Próxima mantención',
       render: (v) => {
-        if (!v.nextMaintenanceKm) return '-';
-        const remaining = v.nextMaintenanceKm - v.currentKm;
+        if (!v.next_maintenance_km) return '-';
+        const remaining = v.next_maintenance_km - v.current_km;
         const isNear = remaining <= 1000;
         return (
           <div className={isNear ? 'text-warning font-medium' : ''}>
@@ -133,25 +136,41 @@ export default function Vehicles() {
           >
             <Settings className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleEdit(v); }}
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); handleDelete(v); }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canEdit && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); handleEdit(v); }}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); handleDelete(v); }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       )
     },
   ];
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Vehículos" />
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -159,10 +178,12 @@ export default function Vehicles() {
         title="Vehículos"
         description="Gestiona la flota de vehículos y sus mantenciones"
         actions={
-          <Button onClick={() => { setEditVehicle(null); setVehicleDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar Vehículo
-          </Button>
+          canEdit && (
+            <Button onClick={() => { setEditVehicle(null); setVehicleDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Vehículo
+            </Button>
+          )
         }
       />
 
@@ -216,10 +237,12 @@ export default function Vehicles() {
           <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No hay vehículos</h3>
           <p className="text-muted-foreground mb-4">Registra el primer vehículo de la flota</p>
-          <Button onClick={() => setVehicleDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar Vehículo
-          </Button>
+          {canEdit && (
+            <Button onClick={() => setVehicleDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Vehículo
+            </Button>
+          )}
         </div>
       )}
 

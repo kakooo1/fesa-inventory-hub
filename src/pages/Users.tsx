@@ -6,8 +6,9 @@ import { DataTable, Column } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useApp } from '@/contexts/AppContext';
-import { User } from '@/types/inventory';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useProfiles, useUpdateProfile, useUpdateUserRole, useDeleteUser, Profile } from '@/hooks/useDatabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,7 +22,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
 
 const roleLabels = {
@@ -36,61 +36,64 @@ const roleIcons = {
   technician: Users,
 };
 
+type ProfileWithRole = Profile & { role: 'admin' | 'supervisor' | 'technician' };
+
 export default function UsersPage() {
-  const { users, deleteUser, currentUser } = useApp();
+  const { userProfile, user } = useAuth();
+  const { data: profiles = [], isLoading } = useProfiles();
+  const deleteUser = useDeleteUser();
+  
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editUser, setEditUser] = useState<ProfileWithRole | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<ProfileWithRole | null>(null);
 
   // Only admins can access this page
-  if (currentUser?.role !== 'admin') {
+  if (userProfile?.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = (profiles as ProfileWithRole[]).filter(u => 
     u.name.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleEdit = (user: User) => {
-    setEditUser(user);
+  const handleEdit = (profile: ProfileWithRole) => {
+    setEditUser(profile);
     setDialogOpen(true);
   };
 
-  const handleDelete = (user: User) => {
-    if (user.id === currentUser?.id) {
-      toast.error('No puedes eliminar tu propia cuenta');
+  const handleDelete = (profile: ProfileWithRole) => {
+    if (profile.user_id === user?.id) {
       return;
     }
-    setUserToDelete(user);
+    setUserToDelete(profile);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = () => {
     if (userToDelete) {
-      deleteUser(userToDelete.id);
-      toast.success('Usuario eliminado correctamente');
+      deleteUser.mutate(userToDelete.user_id);
       setDeleteDialogOpen(false);
       setUserToDelete(null);
     }
   };
 
-  const columns: Column<User>[] = [
+  const columns: Column<ProfileWithRole>[] = [
     { 
       key: 'name', 
       header: 'Usuario',
-      render: (user) => {
-        const RoleIcon = roleIcons[user.role];
+      render: (profile) => {
+        const RoleIcon = roleIcons[profile.role];
         return (
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 text-primary p-2 rounded-full">
               <RoleIcon className="h-4 w-4" />
             </div>
             <div>
-              <p className="font-medium">{user.name}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+              <p className="font-medium">{profile.name}</p>
+              <p className="text-sm text-muted-foreground">{profile.email}</p>
             </div>
           </div>
         );
@@ -99,39 +102,39 @@ export default function UsersPage() {
     { 
       key: 'role', 
       header: 'Rol',
-      render: (user) => (
+      render: (profile) => (
         <StatusBadge status={
-          user.role === 'admin' ? 'info' : 
-          user.role === 'supervisor' ? 'warning' : 'neutral'
+          profile.role === 'admin' ? 'info' : 
+          profile.role === 'supervisor' ? 'warning' : 'neutral'
         }>
-          {roleLabels[user.role]}
+          {roleLabels[profile.role]}
         </StatusBadge>
       )
     },
     { 
       key: 'status', 
       header: 'Estado',
-      render: (user) => (
-        <StatusBadge status={user.active ? 'success' : 'danger'}>
-          {user.active ? 'Activo' : 'Inactivo'}
+      render: (profile) => (
+        <StatusBadge status={profile.active ? 'success' : 'danger'}>
+          {profile.active ? 'Activo' : 'Inactivo'}
         </StatusBadge>
       )
     },
     { 
       key: 'createdAt', 
       header: 'Fecha creación',
-      render: (user) => format(new Date(user.createdAt), 'dd MMM yyyy', { locale: es })
+      render: (profile) => format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es })
     },
     { 
       key: 'actions', 
       header: 'Acciones',
       className: 'text-right',
-      render: (user) => (
+      render: (profile) => (
         <div className="flex justify-end gap-2">
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={(e) => { e.stopPropagation(); handleEdit(user); }}
+            onClick={(e) => { e.stopPropagation(); handleEdit(profile); }}
           >
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -139,8 +142,8 @@ export default function UsersPage() {
             variant="ghost" 
             size="sm"
             className="text-destructive hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); handleDelete(user); }}
-            disabled={user.id === currentUser?.id}
+            onClick={(e) => { e.stopPropagation(); handleDelete(profile); }}
+            disabled={profile.user_id === user?.id}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -149,17 +152,23 @@ export default function UsersPage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Usuarios" />
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <PageHeader 
         title="Usuarios"
         description="Gestiona los usuarios y permisos del sistema"
-        actions={
-          <Button onClick={() => { setEditUser(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar Usuario
-          </Button>
-        }
       />
 
       {/* Stats */}
@@ -169,7 +178,7 @@ export default function UsersPage() {
             <Shield className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{users.filter(u => u.role === 'admin').length}</p>
+            <p className="text-2xl font-bold">{profiles.filter(u => u.role === 'admin').length}</p>
             <p className="text-sm text-muted-foreground">Administradores</p>
           </div>
         </div>
@@ -178,7 +187,7 @@ export default function UsersPage() {
             <UserCog className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{users.filter(u => u.role === 'supervisor').length}</p>
+            <p className="text-2xl font-bold">{profiles.filter(u => u.role === 'supervisor').length}</p>
             <p className="text-sm text-muted-foreground">Supervisores</p>
           </div>
         </div>
@@ -187,7 +196,7 @@ export default function UsersPage() {
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{users.filter(u => u.role === 'technician').length}</p>
+            <p className="text-2xl font-bold">{profiles.filter(u => u.role === 'technician').length}</p>
             <p className="text-sm text-muted-foreground">Técnicos</p>
           </div>
         </div>
@@ -210,7 +219,7 @@ export default function UsersPage() {
       <DataTable
         columns={columns}
         data={filteredUsers}
-        keyExtractor={(user) => user.id}
+        keyExtractor={(profile) => profile.id}
         emptyMessage="No se encontraron usuarios"
       />
 

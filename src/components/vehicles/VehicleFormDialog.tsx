@@ -25,19 +25,17 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useApp } from '@/contexts/AppContext';
-import { Vehicle, VehicleStatus } from '@/types/inventory';
-import { toast } from 'sonner';
+import { useCreateVehicle, useUpdateVehicle, Vehicle } from '@/hooks/useDatabase';
 
 const formSchema = z.object({
   plate: z.string().min(1, 'La patente es requerida').max(10),
   brand: z.string().min(1, 'La marca es requerida').max(50),
   model: z.string().min(1, 'El modelo es requerido').max(50),
   year: z.coerce.number().min(1990).max(new Date().getFullYear() + 1),
-  currentKm: z.coerce.number().min(0, 'El kilometraje debe ser 0 o más'),
+  current_km: z.coerce.number().min(0, 'El kilometraje debe ser 0 o más'),
   status: z.enum(['active', 'maintenance', 'inactive']),
-  assignedTo: z.string().max(100).optional(),
-  nextMaintenanceKm: z.coerce.number().min(0).optional(),
+  assigned_to: z.string().max(100).optional(),
+  next_maintenance_km: z.coerce.number().min(0).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -49,7 +47,8 @@ interface VehicleFormDialogProps {
 }
 
 export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDialogProps) {
-  const { addVehicle, updateVehicle } = useApp();
+  const createVehicle = useCreateVehicle();
+  const updateVehicle = useUpdateVehicle();
   const isEditing = !!vehicle;
 
   const form = useForm<FormData>({
@@ -59,10 +58,10 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
       brand: '',
       model: '',
       year: new Date().getFullYear(),
-      currentKm: 0,
-      status: 'active' as VehicleStatus,
-      assignedTo: '',
-      nextMaintenanceKm: 0,
+      current_km: 0,
+      status: 'active',
+      assigned_to: '',
+      next_maintenance_km: 0,
     },
   });
 
@@ -73,10 +72,10 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
         brand: vehicle.brand,
         model: vehicle.model,
         year: vehicle.year,
-        currentKm: vehicle.currentKm,
+        current_km: vehicle.current_km,
         status: vehicle.status,
-        assignedTo: vehicle.assignedTo || '',
-        nextMaintenanceKm: vehicle.nextMaintenanceKm || 0,
+        assigned_to: vehicle.assigned_to || '',
+        next_maintenance_km: vehicle.next_maintenance_km || 0,
       });
     } else {
       form.reset({
@@ -84,10 +83,10 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
         brand: '',
         model: '',
         year: new Date().getFullYear(),
-        currentKm: 0,
+        current_km: 0,
         status: 'active',
-        assignedTo: '',
-        nextMaintenanceKm: 0,
+        assigned_to: '',
+        next_maintenance_km: 0,
       });
     }
   }, [vehicle, form, open]);
@@ -98,18 +97,17 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
       brand: data.brand,
       model: data.model,
       year: data.year,
-      currentKm: data.currentKm,
+      current_km: data.current_km,
       status: data.status,
-      assignedTo: data.assignedTo || undefined,
-      nextMaintenanceKm: data.nextMaintenanceKm || undefined,
+      assigned_to: data.assigned_to || null,
+      next_maintenance_km: data.next_maintenance_km || null,
+      last_maintenance: null,
     };
 
     if (isEditing && vehicle) {
-      updateVehicle(vehicle.id, vehicleData);
-      toast.success('Vehículo actualizado correctamente');
+      updateVehicle.mutate({ id: vehicle.id, ...vehicleData });
     } else {
-      addVehicle(vehicleData);
-      toast.success('Vehículo agregado correctamente');
+      createVehicle.mutate(vehicleData);
     }
     onOpenChange(false);
   };
@@ -187,7 +185,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
 
               <FormField
                 control={form.control}
-                name="currentKm"
+                name="current_km"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Kilometraje actual</FormLabel>
@@ -226,7 +224,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
 
               <FormField
                 control={form.control}
-                name="nextMaintenanceKm"
+                name="next_maintenance_km"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Próxima mantención (km)</FormLabel>
@@ -241,7 +239,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
 
             <FormField
               control={form.control}
-              name="assignedTo"
+              name="assigned_to"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Asignado a (opcional)</FormLabel>
@@ -257,7 +255,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={createVehicle.isPending || updateVehicle.isPending}>
                 {isEditing ? 'Guardar cambios' : 'Agregar'}
               </Button>
             </div>

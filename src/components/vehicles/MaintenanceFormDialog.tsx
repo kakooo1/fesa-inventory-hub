@@ -20,18 +20,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useApp } from '@/contexts/AppContext';
-import { Vehicle } from '@/types/inventory';
-import { toast } from 'sonner';
+import { useCreateMaintenance, Vehicle } from '@/hooks/useDatabase';
 import { format } from 'date-fns';
 
 const formSchema = z.object({
   type: z.string().min(1, 'El tipo de mantención es requerido').max(100),
   description: z.string().min(1, 'La descripción es requerida').max(500),
-  kmAtMaintenance: z.coerce.number().min(0, 'El kilometraje debe ser 0 o más'),
+  km_at_maintenance: z.coerce.number().min(0, 'El kilometraje debe ser 0 o más'),
   date: z.string().min(1, 'La fecha es requerida'),
   cost: z.coerce.number().min(0, 'El costo debe ser 0 o más'),
-  performedBy: z.string().min(1, 'El responsable es requerido').max(100),
+  performed_by: z.string().min(1, 'El responsable es requerido').max(100),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -43,17 +41,17 @@ interface MaintenanceFormDialogProps {
 }
 
 export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: MaintenanceFormDialogProps) {
-  const { addMaintenance } = useApp();
+  const createMaintenance = useCreateMaintenance();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: '',
       description: '',
-      kmAtMaintenance: vehicle?.currentKm || 0,
+      km_at_maintenance: vehicle?.current_km || 0,
       date: format(new Date(), 'yyyy-MM-dd'),
       cost: 0,
-      performedBy: '',
+      performed_by: '',
     },
   });
 
@@ -62,10 +60,10 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
       form.reset({
         type: '',
         description: '',
-        kmAtMaintenance: vehicle.currentKm,
+        km_at_maintenance: vehicle.current_km,
         date: format(new Date(), 'yyyy-MM-dd'),
         cost: 0,
-        performedBy: '',
+        performed_by: '',
       });
     }
   }, [open, vehicle, form]);
@@ -73,17 +71,15 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
   const onSubmit = (data: FormData) => {
     if (!vehicle) return;
 
-    addMaintenance({
-      vehicleId: vehicle.id,
+    createMaintenance.mutate({
+      vehicle_id: vehicle.id,
       type: data.type,
       description: data.description,
-      kmAtMaintenance: data.kmAtMaintenance,
-      date: new Date(data.date),
+      km_at_maintenance: data.km_at_maintenance,
+      date: data.date,
       cost: data.cost,
-      performedBy: data.performedBy,
+      performed_by: data.performed_by,
     });
-
-    toast.success('Mantención registrada correctamente');
     onOpenChange(false);
   };
 
@@ -117,7 +113,7 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="kmAtMaintenance"
+                name="km_at_maintenance"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Kilometraje</FormLabel>
@@ -161,7 +157,7 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
 
               <FormField
                 control={form.control}
-                name="performedBy"
+                name="performed_by"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Realizado por</FormLabel>
@@ -196,7 +192,7 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={createMaintenance.isPending}>
                 Registrar Mantención
               </Button>
             </div>

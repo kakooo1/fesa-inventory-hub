@@ -26,35 +26,33 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { useApp } from '@/contexts/AppContext';
-import { User, UserRole } from '@/types/inventory';
-import { toast } from 'sonner';
+import { useUpdateProfile, useUpdateUserRole, Profile } from '@/hooks/useDatabase';
 
 const formSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(100),
-  email: z.string().email('Email inválido').max(255),
   role: z.enum(['admin', 'supervisor', 'technician']),
   active: z.boolean(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
+type ProfileWithRole = Profile & { role: 'admin' | 'supervisor' | 'technician' };
+
 interface UserFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user?: User | null;
+  user?: ProfileWithRole | null;
 }
 
 export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps) {
-  const { addUser, updateUser } = useApp();
-  const isEditing = !!user;
+  const updateProfile = useUpdateProfile();
+  const updateRole = useUpdateUserRole();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      email: '',
-      role: 'technician' as UserRole,
+      role: 'technician',
       active: true,
     },
   });
@@ -63,41 +61,46 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     if (user) {
       form.reset({
         name: user.name,
-        email: user.email,
         role: user.role,
         active: user.active,
       });
     } else {
       form.reset({
         name: '',
-        email: '',
         role: 'technician',
         active: true,
       });
     }
   }, [user, form, open]);
 
-  const onSubmit = (data: FormData) => {
-    if (isEditing && user) {
-      updateUser(user.id, data);
-      toast.success('Usuario actualizado correctamente');
-    } else {
-      addUser({
-        name: data.name,
-        email: data.email,
+  const onSubmit = async (data: FormData) => {
+    if (!user) return;
+
+    // Update profile
+    await updateProfile.mutateAsync({
+      userId: user.user_id,
+      name: data.name,
+      active: data.active,
+    });
+
+    // Update role if changed
+    if (data.role !== user.role) {
+      await updateRole.mutateAsync({
+        userId: user.user_id,
         role: data.role,
-        active: data.active,
       });
-      toast.success('Usuario creado correctamente');
     }
+
     onOpenChange(false);
   };
+
+  if (!user) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar Usuario' : 'Agregar Usuario'}</DialogTitle>
+          <DialogTitle>Editar Usuario</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -115,19 +118,11 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="juan@fesa.cl" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-2">
+              <FormLabel>Email</FormLabel>
+              <Input value={user.email} disabled className="bg-muted" />
+              <p className="text-xs text-muted-foreground">El email no puede ser modificado</p>
+            </div>
 
             <FormField
               control={form.control}
@@ -177,8 +172,8 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                {isEditing ? 'Guardar cambios' : 'Crear usuario'}
+              <Button type="submit" disabled={updateProfile.isPending || updateRole.isPending}>
+                Guardar cambios
               </Button>
             </div>
           </form>
