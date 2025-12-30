@@ -14,16 +14,251 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      inventory_items: {
+        Row: {
+          available_quantity: number
+          category: Database["public"]["Enums"]["item_category"]
+          created_at: string
+          description: string | null
+          id: string
+          location: string
+          min_stock: number
+          name: string
+          quantity: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          available_quantity?: number
+          category: Database["public"]["Enums"]["item_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          location: string
+          min_stock?: number
+          name: string
+          quantity?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          available_quantity?: number
+          category?: Database["public"]["Enums"]["item_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string
+          min_stock?: number
+          name?: string
+          quantity?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      loans: {
+        Row: {
+          borrowed_at: string
+          borrowed_by: string
+          created_by: string | null
+          expected_return: string
+          id: string
+          item_id: string
+          notes: string | null
+          quantity: number
+          returned_at: string | null
+        }
+        Insert: {
+          borrowed_at?: string
+          borrowed_by: string
+          created_by?: string | null
+          expected_return: string
+          id?: string
+          item_id: string
+          notes?: string | null
+          quantity?: number
+          returned_at?: string | null
+        }
+        Update: {
+          borrowed_at?: string
+          borrowed_by?: string
+          created_by?: string | null
+          expected_return?: string
+          id?: string
+          item_id?: string
+          notes?: string | null
+          quantity?: number
+          returned_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loans_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenances: {
+        Row: {
+          cost: number
+          created_by: string | null
+          date: string
+          description: string
+          id: string
+          km_at_maintenance: number
+          performed_by: string
+          type: string
+          vehicle_id: string
+        }
+        Insert: {
+          cost?: number
+          created_by?: string | null
+          date?: string
+          description: string
+          id?: string
+          km_at_maintenance: number
+          performed_by: string
+          type: string
+          vehicle_id: string
+        }
+        Update: {
+          cost?: number
+          created_by?: string | null
+          date?: string
+          description?: string
+          id?: string
+          km_at_maintenance?: number
+          performed_by?: string
+          type?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenances_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          assigned_to: string | null
+          brand: string
+          created_at: string
+          current_km: number
+          id: string
+          last_maintenance: string | null
+          model: string
+          next_maintenance_km: number | null
+          plate: string
+          status: Database["public"]["Enums"]["vehicle_status"]
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          assigned_to?: string | null
+          brand: string
+          created_at?: string
+          current_km?: number
+          id?: string
+          last_maintenance?: string | null
+          model: string
+          next_maintenance_km?: number | null
+          plate: string
+          status?: Database["public"]["Enums"]["vehicle_status"]
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          assigned_to?: string | null
+          brand?: string
+          created_at?: string
+          current_km?: number
+          id?: string
+          last_maintenance?: string | null
+          model?: string
+          next_maintenance_km?: number | null
+          plate?: string
+          status?: Database["public"]["Enums"]["vehicle_status"]
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "supervisor" | "technician"
+      item_category: "material" | "tool"
+      item_status: "available" | "borrowed" | "maintenance"
+      vehicle_status: "active" | "maintenance" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +385,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "supervisor", "technician"],
+      item_category: ["material", "tool"],
+      item_status: ["available", "borrowed", "maintenance"],
+      vehicle_status: ["active", "maintenance", "inactive"],
+    },
   },
 } as const
