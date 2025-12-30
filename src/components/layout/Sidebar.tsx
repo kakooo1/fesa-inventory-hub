@@ -12,7 +12,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import fesaLogo from '@/assets/fesa-logo.png';
 import fesaIcon from '@/assets/fesa-icon.png';
 
@@ -28,15 +28,11 @@ const navigation = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { currentUser, setCurrentUser } = useApp();
+  const { userProfile, signOut } = useAuth();
 
   const filteredNav = navigation.filter(item => 
-    !item.adminOnly || currentUser?.role === 'admin'
+    !item.adminOnly || userProfile?.role === 'admin'
   );
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-  };
 
   return (
     <aside className={cn(
@@ -83,19 +79,19 @@ export function Sidebar() {
       </nav>
 
       {/* User info */}
-      {currentUser && (
+      {userProfile && (
         <div className={cn(
           "px-3 py-4 border-t border-sidebar-border",
           collapsed ? "text-center" : ""
         )}>
           {!collapsed && (
             <div className="px-4 mb-3">
-              <p className="font-semibold text-sm truncate">{currentUser.name}</p>
-              <p className="text-xs text-sidebar-foreground/60 capitalize">{currentUser.role}</p>
+              <p className="font-semibold text-sm truncate">{userProfile.name}</p>
+              <p className="text-xs text-sidebar-foreground/60 capitalize">{userProfile.role}</p>
             </div>
           )}
           <button
-            onClick={handleLogout}
+            onClick={signOut}
             className={cn(
               "flex items-center gap-3 px-4 py-2 rounded-lg transition-colors w-full",
               "hover:bg-destructive/20 text-sidebar-foreground/70 hover:text-destructive",

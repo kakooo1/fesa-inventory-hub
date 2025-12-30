@@ -7,64 +7,64 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useApp } from '@/contexts/AppContext';
-import { Loan } from '@/types/inventory';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useLoans, useReturnLoan, Loan, InventoryItem } from '@/hooks/useDatabase';
 import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { toast } from 'sonner';
 
 export default function Loans() {
-  const { loans, returnLoan } = useApp();
+  const { data: loans = [], isLoading } = useLoans();
+  const returnLoan = useReturnLoan();
+  
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
 
   const filteredLoans = loans.filter(l => {
-    const matchesSearch = l.itemName.toLowerCase().includes(search.toLowerCase()) ||
-                         l.borrowedBy.toLowerCase().includes(search.toLowerCase());
-    const isActive = !l.returnedAt;
+    const matchesSearch = l.item?.name?.toLowerCase().includes(search.toLowerCase()) ||
+                         l.borrowed_by.toLowerCase().includes(search.toLowerCase());
+    const isActive = !l.returned_at;
     
     if (activeTab === 'active') return matchesSearch && isActive;
     if (activeTab === 'returned') return matchesSearch && !isActive;
     return matchesSearch;
   });
 
-  const handleReturn = (loan: Loan) => {
-    returnLoan(loan.id);
-    toast.success(`"${loan.itemName}" devuelto correctamente`);
+  const handleReturn = (loan: Loan & { item: InventoryItem }) => {
+    returnLoan.mutate({ id: loan.id, item_id: loan.item_id, quantity: loan.quantity });
   };
 
-  const columns: Column<Loan>[] = [
+  const columns: Column<Loan & { item: InventoryItem }>[] = [
     { 
       key: 'itemName', 
       header: 'Artículo',
       render: (loan) => (
         <div>
-          <p className="font-medium">{loan.itemName}</p>
+          <p className="font-medium">{loan.item?.name || 'N/A'}</p>
           <p className="text-sm text-muted-foreground">Cantidad: {loan.quantity}</p>
         </div>
       )
     },
-    { key: 'borrowedBy', header: 'Prestado a' },
+    { key: 'borrowedBy', header: 'Prestado a', render: (loan) => loan.borrowed_by },
     { 
       key: 'borrowedAt', 
       header: 'Fecha préstamo',
-      render: (loan) => format(new Date(loan.borrowedAt), 'dd MMM yyyy', { locale: es })
+      render: (loan) => format(new Date(loan.borrowed_at), 'dd MMM yyyy', { locale: es })
     },
     { 
       key: 'expectedReturn', 
       header: 'Devolución esperada',
-      render: (loan) => format(new Date(loan.expectedReturn), 'dd MMM yyyy', { locale: es })
+      render: (loan) => format(new Date(loan.expected_return), 'dd MMM yyyy', { locale: es })
     },
     { 
       key: 'status', 
       header: 'Estado',
       render: (loan) => {
-        if (loan.returnedAt) {
+        if (loan.returned_at) {
           return <StatusBadge status="success">Devuelto</StatusBadge>;
         }
-        const isOverdue = new Date(loan.expectedReturn) < new Date();
+        const isOverdue = new Date(loan.expected_return) < new Date();
         return (
           <StatusBadge status={isOverdue ? 'danger' : 'warning'}>
             {isOverdue ? 'Vencido' : 'Pendiente'}
@@ -76,12 +76,13 @@ export default function Loans() {
       key: 'actions', 
       header: 'Acciones',
       className: 'text-right',
-      render: (loan) => !loan.returnedAt && (
+      render: (loan) => !loan.returned_at && (
         <Button 
           variant="outline" 
           size="sm"
           onClick={(e) => { e.stopPropagation(); handleReturn(loan); }}
           className="gap-2"
+          disabled={returnLoan.isPending}
         >
           <RotateCcw className="h-4 w-4" />
           Devolver
@@ -90,8 +91,20 @@ export default function Loans() {
     },
   ];
 
-  const activeCount = loans.filter(l => !l.returnedAt).length;
-  const returnedCount = loans.filter(l => l.returnedAt).length;
+  const activeCount = loans.filter(l => !l.returned_at).length;
+  const returnedCount = loans.filter(l => l.returned_at).length;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Préstamos" />
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

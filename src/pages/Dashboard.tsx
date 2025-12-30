@@ -4,19 +4,25 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { DataTable, Column } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { useApp } from '@/contexts/AppContext';
-import { InventoryItem, Loan, Vehicle } from '@/types/inventory';
+import { useAuth } from '@/contexts/AuthContext';
+import { useInventoryItems, useLoans, useVehicles, InventoryItem, Loan, Vehicle } from '@/hooks/useDatabase';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
-  const { items, loans, vehicles, currentUser } = useApp();
+  const { userProfile } = useAuth();
+  const { data: items = [], isLoading: itemsLoading } = useInventoryItems();
+  const { data: loans = [], isLoading: loansLoading } = useLoans();
+  const { data: vehicles = [], isLoading: vehiclesLoading } = useVehicles();
 
-  const activeLoans = loans.filter(l => !l.returnedAt);
-  const lowStockItems = items.filter(i => i.availableQuantity <= i.minStock);
+  const activeLoans = loans.filter(l => !l.returned_at);
+  const lowStockItems = items.filter(i => i.available_quantity <= i.min_stock);
   const materials = items.filter(i => i.category === 'material');
   const tools = items.filter(i => i.category === 'tool');
   const activeVehicles = vehicles.filter(v => v.status === 'active');
+
+  const isLoading = itemsLoading || loansLoading || vehiclesLoading;
 
   const lowStockColumns: Column<InventoryItem>[] = [
     { key: 'name', header: 'Nombre', render: (item) => (
@@ -29,22 +35,22 @@ export default function Dashboard() {
     )},
     { key: 'stock', header: 'Stock', render: (item) => (
       <div className="flex items-center gap-2">
-        <span className="font-semibold text-destructive">{item.availableQuantity}</span>
+        <span className="font-semibold text-destructive">{item.available_quantity}</span>
         <span className="text-muted-foreground">/ {item.quantity} {item.unit}</span>
       </div>
     )},
   ];
 
-  const activeLoanColumns: Column<Loan>[] = [
+  const activeLoanColumns: Column<Loan & { item: InventoryItem }>[] = [
     { key: 'itemName', header: 'Artículo', render: (loan) => (
-      <div className="font-medium">{loan.itemName}</div>
+      <div className="font-medium">{loan.item?.name || 'N/A'}</div>
     )},
-    { key: 'borrowedBy', header: 'Prestado a', render: (loan) => loan.borrowedBy },
+    { key: 'borrowedBy', header: 'Prestado a', render: (loan) => loan.borrowed_by },
     { key: 'borrowedAt', header: 'Fecha', render: (loan) => (
-      format(new Date(loan.borrowedAt), 'dd MMM yyyy', { locale: es })
+      format(new Date(loan.borrowed_at), 'dd MMM yyyy', { locale: es })
     )},
     { key: 'status', header: 'Estado', render: (loan) => {
-      const isOverdue = new Date(loan.expectedReturn) < new Date();
+      const isOverdue = new Date(loan.expected_return) < new Date();
       return (
         <StatusBadge status={isOverdue ? 'danger' : 'warning'}>
           {isOverdue ? 'Vencido' : 'Pendiente'}
@@ -59,7 +65,7 @@ export default function Dashboard() {
     )},
     { key: 'vehicle', header: 'Vehículo', render: (v) => `${v.brand} ${v.model}` },
     { key: 'km', header: 'Kilometraje', render: (v) => (
-      <span className="font-medium">{v.currentKm.toLocaleString()} km</span>
+      <span className="font-medium">{v.current_km.toLocaleString()} km</span>
     )},
     { key: 'status', header: 'Estado', render: (v) => (
       <StatusBadge status={
@@ -71,10 +77,23 @@ export default function Dashboard() {
     )},
   ];
 
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Cargando..." />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <PageHeader 
-        title={`Bienvenido, ${currentUser?.name.split(' ')[0]}`}
+        title={`Bienvenido, ${userProfile?.name?.split(' ')[0] || 'Usuario'}`}
         description="Resumen del inventario y operaciones de FESA"
       />
 
@@ -83,14 +102,14 @@ export default function Dashboard() {
         <StatCard
           title="Materiales"
           value={materials.length}
-          subtitle={`${materials.reduce((acc, m) => acc + m.availableQuantity, 0)} unidades disponibles`}
+          subtitle={`${materials.reduce((acc, m) => acc + m.available_quantity, 0)} unidades disponibles`}
           icon={<Package className="h-6 w-6" />}
           variant="primary"
         />
         <StatCard
           title="Herramientas"
           value={tools.length}
-          subtitle={`${tools.filter(t => t.availableQuantity > 0).length} disponibles`}
+          subtitle={`${tools.filter(t => t.available_quantity > 0).length} disponibles`}
           icon={<Wrench className="h-6 w-6" />}
           variant="default"
         />

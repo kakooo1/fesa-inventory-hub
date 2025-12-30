@@ -19,15 +19,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useApp } from '@/contexts/AppContext';
-import { InventoryItem, ItemCategory } from '@/types/inventory';
-import { toast } from 'sonner';
+import { useCreateInventoryItem, useUpdateInventoryItem, InventoryItem } from '@/hooks/useDatabase';
 
 const formSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(100),
   quantity: z.coerce.number().min(1, 'La cantidad debe ser al menos 1'),
   unit: z.string().min(1, 'La unidad es requerida'),
-  minStock: z.coerce.number().min(0, 'El stock mínimo debe ser 0 o más'),
+  min_stock: z.coerce.number().min(0, 'El stock mínimo debe ser 0 o más'),
   location: z.string().min(1, 'La ubicación es requerida'),
   description: z.string().max(500).optional(),
 });
@@ -37,12 +35,13 @@ type FormData = z.infer<typeof formSchema>;
 interface ItemFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category: ItemCategory;
+  category: 'material' | 'tool';
   item?: InventoryItem | null;
 }
 
 export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormDialogProps) {
-  const { addItem, updateItem } = useApp();
+  const createItem = useCreateInventoryItem();
+  const updateItem = useUpdateInventoryItem();
   const isEditing = !!item;
 
   const form = useForm<FormData>({
@@ -50,8 +49,8 @@ export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormD
     defaultValues: {
       name: '',
       quantity: 1,
-      unit: category === 'material' ? 'unidad' : 'unidad',
-      minStock: 1,
+      unit: 'unidad',
+      min_stock: 1,
       location: '',
       description: '',
     },
@@ -63,7 +62,7 @@ export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormD
         name: item.name,
         quantity: item.quantity,
         unit: item.unit,
-        minStock: item.minStock,
+        min_stock: item.min_stock,
         location: item.location,
         description: item.description || '',
       });
@@ -72,7 +71,7 @@ export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormD
         name: '',
         quantity: 1,
         unit: 'unidad',
-        minStock: 1,
+        min_stock: 1,
         location: '',
         description: '',
       });
@@ -81,19 +80,22 @@ export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormD
 
   const onSubmit = (data: FormData) => {
     if (isEditing && item) {
-      updateItem(item.id, { ...data, category });
-      toast.success(`${category === 'material' ? 'Material' : 'Herramienta'} actualizado`);
-    } else {
-      addItem({
-        name: data.name,
-        quantity: data.quantity,
-        unit: data.unit,
-        minStock: data.minStock,
-        location: data.location,
-        description: data.description,
+      updateItem.mutate({ 
+        id: item.id, 
+        ...data,
         category,
       });
-      toast.success(`${category === 'material' ? 'Material' : 'Herramienta'} agregado`);
+    } else {
+      createItem.mutate({
+        name: data.name,
+        quantity: data.quantity,
+        available_quantity: data.quantity,
+        unit: data.unit,
+        min_stock: data.min_stock,
+        location: data.location,
+        description: data.description || null,
+        category,
+      });
     }
     onOpenChange(false);
   };
@@ -157,7 +159,7 @@ export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormD
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="minStock"
+                name="min_stock"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Stock mínimo</FormLabel>
@@ -206,7 +208,7 @@ export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormD
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
                 {isEditing ? 'Guardar cambios' : 'Agregar'}
               </Button>
             </div>

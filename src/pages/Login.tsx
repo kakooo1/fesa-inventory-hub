@@ -1,32 +1,63 @@
 import { useState } from 'react';
-import { useApp } from '@/contexts/AppContext';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import fesaLogo from '@/assets/fesa-logo.png';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const { users, setCurrentUser } = useApp();
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Login form
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  
+  // Register form
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login
-    setTimeout(() => {
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.active);
-      
-      if (user) {
-        setCurrentUser(user);
-        toast.success(`Bienvenido, ${user.name}`);
+    const { error } = await signIn(loginEmail, loginPassword);
+    
+    if (error) {
+      toast.error(error.message === 'Invalid login credentials' 
+        ? 'Credenciales inválidas' 
+        : error.message);
+    } else {
+      toast.success('Bienvenido');
+      navigate('/');
+    }
+    
+    setIsLoading(false);
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const { error } = await signUp(registerEmail, registerPassword, registerName);
+    
+    if (error) {
+      if (error.message.includes('already registered')) {
+        toast.error('Este correo ya está registrado');
       } else {
-        toast.error('Usuario no encontrado o inactivo');
+        toast.error(error.message);
       }
-      setIsLoading(false);
-    }, 500);
+    } else {
+      toast.success('Cuenta creada exitosamente');
+      navigate('/');
+    }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -42,51 +73,103 @@ export default function Login() {
               className="h-12 mx-auto mb-6"
             />
             <h1 className="text-2xl font-bold font-display">Sistema de Inventario</h1>
-            <p className="text-muted-foreground mt-2">Ingresa tus credenciales para continuar</p>
+            <p className="text-muted-foreground mt-2">Ingresa o crea una cuenta para continuar</p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="usuario@fesa.cl"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-12"
-              />
-            </div>
+          <Tabs defaultValue="login" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+              <TabsTrigger value="register">Registrarse</TabsTrigger>
+            </TabsList>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-base"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Ingresando...' : 'Ingresar'}
-            </Button>
-          </form>
-
-          {/* Demo accounts */}
-          <div className="mt-8 pt-6 border-t">
-            <p className="text-sm text-muted-foreground text-center mb-4">
-              Cuentas de demostración:
-            </p>
-            <div className="space-y-2">
-              {users.slice(0, 3).map((user) => (
-                <button
-                  key={user.id}
-                  onClick={() => setEmail(user.email)}
-                  className="w-full text-left px-4 py-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm"
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Correo electrónico</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="usuario@fesa.cl"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required
+                    className="h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Contraseña</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                    className="h-12"
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-base"
+                  disabled={isLoading}
                 >
-                  <div className="font-medium">{user.name}</div>
-                  <div className="text-muted-foreground text-xs">{user.email} • {user.role}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+                  {isLoading ? 'Ingresando...' : 'Ingresar'}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="register">
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Nombre completo</Label>
+                  <Input
+                    id="register-name"
+                    type="text"
+                    placeholder="Juan Pérez"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    required
+                    className="h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">Correo electrónico</Label>
+                  <Input
+                    id="register-email"
+                    type="email"
+                    placeholder="usuario@fesa.cl"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    required
+                    className="h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Contraseña</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="h-12"
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-base"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Creando cuenta...' : 'Crear cuenta'}
+                </Button>
+              </form>
+              <p className="text-xs text-muted-foreground text-center mt-4">
+                El primer usuario registrado será administrador
+              </p>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Footer */}

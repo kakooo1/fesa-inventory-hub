@@ -6,8 +6,9 @@ import { DataTable, Column } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useApp } from '@/contexts/AppContext';
-import { InventoryItem } from '@/types/inventory';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useInventoryItems, useDeleteInventoryItem, InventoryItem } from '@/hooks/useDatabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 import {
   AlertDialog,
@@ -19,18 +20,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from 'sonner';
 
 export default function Tools() {
-  const { items, deleteItem } = useApp();
+  const { userProfile } = useAuth();
+  const { data: items = [], isLoading } = useInventoryItems('tool');
+  const deleteItem = useDeleteInventoryItem();
+  
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
-  const tools = items.filter(i => 
-    i.category === 'tool' &&
+  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'supervisor';
+  const canDelete = userProfile?.role === 'admin';
+
+  const filteredItems = items.filter(i => 
     i.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -46,8 +51,7 @@ export default function Tools() {
 
   const confirmDelete = () => {
     if (itemToDelete) {
-      deleteItem(itemToDelete.id);
-      toast.success('Herramienta eliminada correctamente');
+      deleteItem.mutate(itemToDelete.id);
       setDeleteDialogOpen(false);
       setItemToDelete(null);
     }
@@ -70,10 +74,10 @@ export default function Tools() {
       key: 'stock', 
       header: 'Disponibilidad',
       render: (item) => {
-        const borrowed = item.quantity - item.availableQuantity;
+        const borrowed = item.quantity - item.available_quantity;
         return (
           <div className="flex items-center gap-2">
-            <span className="font-medium">{item.availableQuantity}</span>
+            <span className="font-medium">{item.available_quantity}</span>
             <span className="text-muted-foreground">/ {item.quantity}</span>
             {borrowed > 0 && (
               <span className="text-xs text-warning">({borrowed} prestadas)</span>
@@ -86,8 +90,8 @@ export default function Tools() {
       key: 'status', 
       header: 'Estado',
       render: (item) => {
-        const allBorrowed = item.availableQuantity === 0;
-        const someBorrowed = item.availableQuantity < item.quantity;
+        const allBorrowed = item.available_quantity === 0;
+        const someBorrowed = item.available_quantity < item.quantity;
         return (
           <StatusBadge status={allBorrowed ? 'danger' : someBorrowed ? 'warning' : 'success'}>
             {allBorrowed ? 'No disponible' : someBorrowed ? 'Parcialmente disponible' : 'Disponible'}
@@ -102,25 +106,41 @@ export default function Tools() {
       className: 'text-right',
       render: (item) => (
         <div className="flex justify-end gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canEdit && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       )
     },
   ];
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Herramientas" />
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -128,10 +148,12 @@ export default function Tools() {
         title="Herramientas"
         description="Gestiona las herramientas de trabajo"
         actions={
-          <Button onClick={() => { setEditItem(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar Herramienta
-          </Button>
+          canEdit && (
+            <Button onClick={() => { setEditItem(null); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Herramienta
+            </Button>
+          )
         }
       />
 
@@ -149,23 +171,25 @@ export default function Tools() {
       </div>
 
       {/* Empty State */}
-      {tools.length === 0 && !search && (
+      {filteredItems.length === 0 && !search && (
         <div className="text-center py-16 bg-card rounded-xl border">
           <Wrench className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No hay herramientas</h3>
           <p className="text-muted-foreground mb-4">Comienza agregando tu primera herramienta</p>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar Herramienta
-          </Button>
+          {canEdit && (
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Herramienta
+            </Button>
+          )}
         </div>
       )}
 
       {/* Table */}
-      {(tools.length > 0 || search) && (
+      {(filteredItems.length > 0 || search) && (
         <DataTable
           columns={columns}
-          data={tools}
+          data={filteredItems}
           keyExtractor={(item) => item.id}
           emptyMessage="No se encontraron herramientas"
         />
