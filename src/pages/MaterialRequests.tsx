@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGlobalNotificationSound } from '@/hooks/useGlobalNotificationSound';
 import {
   useMaterialRequests,
   useApproveMaterialRequest,
@@ -21,6 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function MaterialRequests() {
   const { userProfile } = useAuth();
+  const { playNotificationSound } = useGlobalNotificationSound();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<MaterialRequestWithItems | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -164,6 +166,7 @@ export default function MaterialRequests() {
           requestId: request.id,
           approvedBy: userProfile.user_id,
         });
+        playNotificationSound();
         setDetailOpen(false);
         setSelectedRequest(null);
       } catch (error) {
@@ -177,6 +180,7 @@ export default function MaterialRequests() {
           requestId: request.id,
           rejectedBy: userProfile.user_id,
         });
+        playNotificationSound();
         setDetailOpen(false);
         setSelectedRequest(null);
       } catch (error) {
@@ -288,6 +292,7 @@ export default function MaterialRequests() {
           requestId: request.id,
           markedBy: userProfile.user_id,
         });
+        playNotificationSound();
         setDetailOpen(false);
         setSelectedRequest(null);
       } catch (error) {

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useVehicles, useDeleteVehicle, useProfiles, Vehicle, useCreateNotification } from '@/hooks/useDatabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGlobalNotificationSound } from '@/hooks/useGlobalNotificationSound';
 import { VehicleFormDialog } from '@/components/vehicles/VehicleFormDialog';
 import { MaintenanceFormDialog } from '@/components/vehicles/MaintenanceFormDialog';
 import {
@@ -37,6 +38,7 @@ export default function Vehicles() {
   const { data: profiles = [] } = useProfiles();
   const deleteVehicle = useDeleteVehicle();
   const createNotification = useCreateNotification();
+  const { playNotificationSound } = useGlobalNotificationSound();
   
   const [search, setSearch] = useState('');
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
@@ -106,6 +108,9 @@ export default function Vehicles() {
         
         // Create all notifications at once
         await Promise.all(notifications.map(notif => createNotification.mutateAsync(notif)));
+
+        // Reproducir sonido
+        playNotificationSound();
 
         setNotificationDialogOpen(false);
         setNotificationMessage('');

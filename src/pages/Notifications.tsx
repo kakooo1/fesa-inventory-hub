@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Bell, Trash2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, Trash2, AlertCircle, Volume2, VolumeX } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGetNotifications, useMarkNotificationAsRead } from '@/hooks/useDatabase';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -15,6 +16,21 @@ export default function Notifications() {
   const { data: userNotifications = [], isLoading } = useGetNotifications(userProfile?.role);
   const markAsRead = useMarkNotificationAsRead();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const previousNotificationsCount = useRef(0);
+  const { playSound } = useNotificationSound();
+
+  // Reproducir sonido cuando lleguen notificaciones nuevas
+  useEffect(() => {
+    const currentUnreadCount = userNotifications.filter(n => !n.read_at).length;
+    
+    // Si el número de notificaciones sin leer aumentó y el sonido está habilitado
+    if (soundEnabled && currentUnreadCount > previousNotificationsCount.current && currentUnreadCount > 0) {
+      playSound();
+    }
+    
+    previousNotificationsCount.current = currentUnreadCount;
+  }, [userNotifications, soundEnabled, playSound]);
 
   if (!userProfile) {
     return (
@@ -71,10 +87,33 @@ export default function Notifications() {
 
   return (
     <MainLayout>
-      <PageHeader
-        title="Notificaciones"
-        description={`Tienes ${unreadCount} notificación${unreadCount !== 1 ? 'es' : ''} sin leer`}
-      />
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <PageHeader
+            title="Notificaciones"
+            description={`Tienes ${unreadCount} notificación${unreadCount !== 1 ? 'es' : ''} sin leer`}
+          />
+        </div>
+        <Button
+          variant={soundEnabled ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          className="gap-2"
+          title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
+        >
+          {soundEnabled ? (
+            <>
+              <Volume2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Sonido activado</span>
+            </>
+          ) : (
+            <>
+              <VolumeX className="h-4 w-4" />
+              <span className="hidden sm:inline">Sonido desactivado</span>
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* Filter Tabs */}
       <div className="flex gap-2 mb-6">
