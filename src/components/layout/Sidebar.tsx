@@ -9,22 +9,25 @@ import {
   HandCoins,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  FileText,
+  Monitor,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import fesaLogo from '@/assets/fesa-logo.png';
 import fesaIcon from '@/assets/fesa-icon.png';
 
-import { Monitor } from 'lucide-react';
-
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Materiales', href: '/materials', icon: Package },
-  { name: 'Herramientas', href: '/tools', icon: Wrench },
-  { name: 'Equipos', href: '/equipments', icon: Monitor },
-  { name: 'Préstamos', href: '/loans', icon: HandCoins },
-  { name: 'Vehículos', href: '/vehicles', icon: Truck },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Materiales', href: '/materials', icon: Package, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Solicitudes', href: '/material-requests', icon: FileText, rolesAllowed: ['admin', 'supervisor', 'bodeguero'] },
+  { name: 'Vehículos', href: '/vehicles', icon: Truck, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
+  { name: 'Notificaciones', href: '/notifications', icon: Bell, rolesAllowed: ['admin', 'supervisor', 'technician', 'bodeguero'] },
   { name: 'Usuarios', href: '/users', icon: Users, adminOnly: true },
 ];
 
@@ -33,9 +36,11 @@ export function Sidebar() {
   const location = useLocation();
   const { userProfile, signOut } = useAuth();
 
-  const filteredNav = navigation.filter(item => 
-    !item.adminOnly || userProfile?.role === 'admin'
-  );
+  const filteredNav = navigation.filter(item => {
+    if (item.adminOnly && userProfile?.role !== 'admin') return false;
+    if (item.rolesAllowed && !item.rolesAllowed.includes(userProfile?.role || '')) return false;
+    return true;
+  });
 
   return (
     <aside className={cn(

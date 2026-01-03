@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useCreateVehicle, useUpdateVehicle, Vehicle } from '@/hooks/useDatabase';
+import { useCreateVehicle, useUpdateVehicle, useProfiles, Vehicle } from '@/hooks/useDatabase';
 
 const formSchema = z.object({
   plate: z.string().min(1, 'La patente es requerida').max(10),
@@ -49,6 +49,7 @@ interface VehicleFormDialogProps {
 export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDialogProps) {
   const createVehicle = useCreateVehicle();
   const updateVehicle = useUpdateVehicle();
+  const { data: profiles = [] } = useProfiles();
   const isEditing = !!vehicle;
 
   const form = useForm<FormData>({
@@ -243,9 +244,21 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Asignado a (opcional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nombre del conductor" {...field} />
-                  </FormControl>
+                  <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar usuario" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sin asignar</SelectItem>
+                      {profiles.map((profile) => (
+                        <SelectItem key={profile.user_id} value={profile.user_id}>
+                          {profile.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

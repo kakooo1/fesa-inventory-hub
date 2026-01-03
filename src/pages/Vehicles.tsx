@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useVehicles, useDeleteVehicle, Vehicle } from '@/hooks/useDatabase';
+import { useVehicles, useDeleteVehicle, useProfiles, Vehicle, useCreateNotification } from '@/hooks/useDatabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VehicleFormDialog } from '@/components/vehicles/VehicleFormDialog';
 import { MaintenanceFormDialog } from '@/components/vehicles/MaintenanceFormDialog';
@@ -21,28 +21,48 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from 'sonner';
 
 export default function Vehicles() {
   const { userProfile } = useAuth();
   const { data: vehicles = [], isLoading } = useVehicles();
+  const { data: profiles = [] } = useProfiles();
   const deleteVehicle = useDeleteVehicle();
+  const createNotification = useCreateNotification();
   
   const [search, setSearch] = useState('');
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [notificationVehicle, setNotificationVehicle] = useState<Vehicle | null>(null);
+  const [notificationMessage, setNotificationMessage] = useState('');
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
 
-  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'supervisor';
+  const canEdit = userProfile?.role === 'admin';
   const canDelete = userProfile?.role === 'admin';
+  const isSupervisor = userProfile?.role === 'supervisor';
 
-  const filteredVehicles = vehicles.filter(v => 
-    v.plate.toLowerCase().includes(search.toLowerCase()) ||
-    v.brand.toLowerCase().includes(search.toLowerCase()) ||
-    v.model.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredVehicles = vehicles.filter(v => {
+    // Supervisores solo ven vehículos asignados a ellos
+    if (isSupervisor && v.assigned_to !== userProfile?.user_id) {
+      return false;
+    }
+    
+    return v.plate.toLowerCase().includes(search.toLowerCase()) ||
+      v.brand.toLowerCase().includes(search.toLowerCase()) ||
+      v.model.toLowerCase().includes(search.toLowerCase());
+  });
 
   const handleEdit = (vehicle: Vehicle) => {
     setEditVehicle(vehicle);
@@ -52,6 +72,46 @@ export default function Vehicles() {
   const handleMaintenance = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setMaintenanceDialogOpen(true);
+  };
+
+  const handleNotification = (vehicle: Vehicle) => {
+    setNotificationVehicle(vehicle);
+    setNotificationDialogOpen(true);
+  };
+
+  const submitNotification = async () => {
+    if (notificationVehicle && notificationMessage.trim() && userProfile) {
+      try {
+        // Create notification for bodeguero and admin
+        createNotification.mutate({
+          title: `Reporte de Vehículo: ${notificationVehicle.plate}`,
+          description: notificationMessage,
+          notification_type: 'vehicle_report',
+          vehicle_id: notificationVehicle.id,
+          material_request_id: null,
+          created_by: userProfile.user_id,
+          recipient_role: 'bodeguero',
+        });
+        
+        // Also notify admins
+        createNotification.mutate({
+          title: `Reporte de Vehículo: ${notificationVehicle.plate}`,
+          description: notificationMessage,
+          notification_type: 'vehicle_report',
+          vehicle_id: notificationVehicle.id,
+          material_request_id: null,
+          created_by: userProfile.user_id,
+          recipient_role: 'admin',
+        });
+
+        setNotificationDialogOpen(false);
+        setNotificationMessage('');
+        setNotificationVehicle(null);
+        toast.success('Notificación enviada al bodeguero y administradores');
+      } catch (error) {
+        toast.error('Error al enviar notificación');
+      }
+    }
   };
 
   const handleDelete = (vehicle: Vehicle) => {
@@ -95,7 +155,15 @@ export default function Vehicles() {
         </div>
       )
     },
-    { key: 'assignedTo', header: 'Asignado a', render: (v) => v.assigned_to || '-' },
+    { 
+      key: 'assignedTo', 
+      header: 'Asignado a', 
+      render: (v) => {
+        if (!v.assigned_to) return '-';
+        const user = profiles.find(p => p.user_id === v.assigned_to);
+        return user ? user.name : v.assigned_to;
+      }
+    },
     { 
       key: 'maintenance', 
       header: 'Próxima mantención',
@@ -128,14 +196,26 @@ export default function Vehicles() {
       className: 'text-right',
       render: (v) => (
         <div className="flex justify-end gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleMaintenance(v); }}
-            title="Registrar mantención"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
+          {isSupervisor && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); handleNotification(v); }}
+              title="Notificar incidente o próxima mantención"
+            >
+              <span className="text-sm">📢</span>
+            </Button>
+          )}
+          {!isSupervisor && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); handleMaintenance(v); }}
+              title="Registrar mantención"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
           {canEdit && (
             <Button 
               variant="ghost" 
@@ -187,7 +267,8 @@ export default function Vehicles() {
         }
       />
 
-      {/* Stats */}
+      {/* Stats - Solo para admin */}
+      {!isSupervisor && (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-card rounded-xl border p-4 flex items-center gap-4">
           <div className="bg-success/10 text-success p-3 rounded-lg">
@@ -217,6 +298,7 @@ export default function Vehicles() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Search */}
       <div className="mb-6">
@@ -287,6 +369,37 @@ export default function Vehicles() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Notification Dialog */}
+      <Dialog open={notificationDialogOpen} onOpenChange={setNotificationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Notificar sobre vehículo</DialogTitle>
+            <DialogDescription>
+              {notificationVehicle && `Vehículo: ${notificationVehicle.plate} - ${notificationVehicle.brand} ${notificationVehicle.model}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Descripción de la notificación</label>
+              <textarea
+                placeholder="Describe el incidente, reporte o notificación..."
+                value={notificationMessage}
+                onChange={(e) => setNotificationMessage(e.target.value)}
+                className="w-full min-h-24 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotificationDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={submitNotification} disabled={!notificationMessage.trim()}>
+              Enviar Notificación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

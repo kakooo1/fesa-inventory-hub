@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,17 +26,26 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { useUpdateProfile, useUpdateUserRole, Profile } from '@/hooks/useDatabase';
+import { useUpdateProfile, useUpdateUserRole, useCreateUser, Profile } from '@/hooks/useDatabase';
+import { useToast } from '@/hooks/use-toast';
 
-const formSchema = z.object({
+const editFormSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(100),
-  role: z.enum(['admin', 'supervisor', 'technician']),
+  role: z.enum(['admin', 'supervisor', 'technician', 'bodeguero']),
   active: z.boolean(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+const createFormSchema = z.object({
+  name: z.string().min(1, 'El nombre es requerido').max(100),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  role: z.enum(['admin', 'supervisor', 'technician', 'bodeguero']),
+});
 
-type ProfileWithRole = Profile & { role: 'admin' | 'supervisor' | 'technician' };
+type EditFormData = z.infer<typeof editFormSchema>;
+type CreateFormData = z.infer<typeof createFormSchema>;
+
+type ProfileWithRole = Profile & { role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' };
 
 interface UserFormDialogProps {
   open: boolean;
@@ -47,9 +56,12 @@ interface UserFormDialogProps {
 export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps) {
   const updateProfile = useUpdateProfile();
   const updateRole = useUpdateUserRole();
+  const createUserMutation = useCreateUser();
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+  const editForm = useForm<EditFormData>({
+    resolver: zodResolver(editFormSchema),
     defaultValues: {
       name: '',
       role: 'technician',
@@ -57,55 +69,173 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     },
   });
 
+  const createForm = useForm<CreateFormData>({
+    resolver: zodResolver(createFormSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      role: 'technician',
+    },
+  });
+
   useEffect(() => {
     if (user) {
-      form.reset({
+      editForm.reset({
         name: user.name,
         role: user.role,
         active: user.active,
       });
     } else {
-      form.reset({
+      createForm.reset({
         name: '',
+        email: '',
+        password: '',
         role: 'technician',
-        active: true,
       });
     }
-  }, [user, form, open]);
+  }, [user, editForm, createForm, open]);
 
-  const onSubmit = async (data: FormData) => {
-    if (!user) return;
+  const onSubmitEdit = async (data: EditFormData) => {
+    try {
+      if (!user) return;
 
-    // Update profile
-    await updateProfile.mutateAsync({
-      userId: user.user_id,
-      name: data.name,
-      active: data.active,
-    });
-
-    // Update role if changed
-    if (data.role !== user.role) {
-      await updateRole.mutateAsync({
+      await updateProfile.mutateAsync({
         userId: user.user_id,
-        role: data.role,
+        name: data.name,
+        active: data.active,
       });
-    }
 
-    onOpenChange(false);
+      if (data.role !== user.role) {
+        await updateRole.mutateAsync({
+          userId: user.user_id,
+          role: data.role,
+        });
+      }
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
-  if (!user) return null;
+  const onSubmitCreate = async (data: CreateFormData) => {
+    try {
+      await createUserMutation.mutateAsync({
+        email: data.email,
+        password: data.password,
+        name: data.name,
+        role: data.role,
+      });
 
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+
+  if (user) {
+    // Edit mode
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre completo</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Juan Pérez" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-2">
+                <FormLabel>Email</FormLabel>
+                <Input value={user.email} disabled className="bg-muted" />
+                <p className="text-xs text-muted-foreground">El email no puede ser modificado</p>
+              </div>
+
+              <FormField
+                control={editForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rol</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="supervisor">Supervisor</SelectItem>
+                        <SelectItem value="technician">Técnico</SelectItem>
+                        <SelectItem value="bodeguero">Bodeguero</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="active"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Usuario activo</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Los usuarios inactivos no pueden acceder al sistema
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateProfile.isPending || updateRole.isPending}>
+                  Guardar cambios
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Create mode
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Editar Usuario</DialogTitle>
+          <DialogTitle>Agregar Usuario</DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Form {...createForm}>
+          <form onSubmit={createForm.handleSubmit(onSubmitCreate)} className="space-y-4">
             <FormField
-              control={form.control}
+              control={createForm.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
@@ -118,14 +248,52 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
               )}
             />
 
-            <div className="space-y-2">
-              <FormLabel>Email</FormLabel>
-              <Input value={user.email} disabled className="bg-muted" />
-              <p className="text-xs text-muted-foreground">El email no puede ser modificado</p>
-            </div>
+            <FormField
+              control={createForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="usuario@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
-              control={form.control}
+              control={createForm.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contraseña</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type={showPassword ? 'text' : 'password'} 
+                      placeholder="Mínimo 6 caracteres" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id="show-password"
+                      checked={showPassword}
+                      onChange={(e) => setShowPassword(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <label htmlFor="show-password" className="text-sm text-muted-foreground cursor-pointer">
+                      Mostrar contraseña
+                    </label>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={createForm.control}
               name="role"
               render={({ field }) => (
                 <FormItem>
@@ -140,30 +308,10 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
                       <SelectItem value="admin">Administrador</SelectItem>
                       <SelectItem value="supervisor">Supervisor</SelectItem>
                       <SelectItem value="technician">Técnico</SelectItem>
+                      <SelectItem value="bodeguero">Bodeguero</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="active"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Usuario activo</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Los usuarios inactivos no pueden acceder al sistema
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
                 </FormItem>
               )}
             />
@@ -172,8 +320,8 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={updateProfile.isPending || updateRole.isPending}>
-                Guardar cambios
+              <Button type="submit" disabled={createUserMutation.isPending}>
+                {createUserMutation.isPending ? 'Creando...' : 'Crear usuario'}
               </Button>
             </div>
           </form>

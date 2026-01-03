@@ -28,15 +28,17 @@ const roleLabels = {
   admin: 'Administrador',
   supervisor: 'Supervisor',
   technician: 'Técnico',
+  bodeguero: 'Bodeguero',
 };
 
 const roleIcons = {
   admin: Shield,
   supervisor: UserCog,
   technician: Users,
+  bodeguero: Users,
 };
 
-type ProfileWithRole = Profile & { role: 'admin' | 'supervisor' | 'technician' };
+type ProfileWithRole = Profile & { role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' };
 
 export default function UsersPage() {
   const { userProfile, user } = useAuth();
@@ -166,10 +168,24 @@ export default function UsersPage() {
 
   return (
     <MainLayout>
-      <PageHeader 
-        title="Usuarios"
-        description="Gestiona los usuarios y permisos del sistema"
-      />
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <PageHeader 
+            title="Usuarios"
+            description="Gestiona los usuarios y permisos del sistema"
+          />
+        </div>
+        <Button 
+          onClick={() => {
+            setEditUser(null);
+            setDialogOpen(true);
+          }}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Agregar Usuario
+        </Button>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

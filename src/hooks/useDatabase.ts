@@ -69,7 +69,7 @@ export interface Profile {
 export interface UserRole {
   id: string;
   user_id: string;
-  role: 'admin' | 'supervisor' | 'technician';
+  role: 'admin' | 'supervisor' | 'technician' | 'bodeguero';
 }
 
 // ============ INVENTORY ITEMS ============
@@ -455,7 +455,7 @@ export function useUpdateProfile() {
 export function useUpdateUserRole() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'supervisor' | 'technician' }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' }) => {
       const { error } = await supabase
         .from('user_roles')
         .update({ role })
@@ -487,6 +487,610 @@ export function useDeleteUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       toast.success('Usuario eliminado');
+    },
+    onError: (error) => {
+      toast.error('Error: ' + error.message);
+    },
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ email, password, name, role }: { email: string; password: string; name: string; role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' }) => {
+      // 1. Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('No user data returned');
+
+      const userId = authData.user.id;
+
+      // 2. Update profile (trigger creates it, we just update the name)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name,
+          active: true,
+        })
+        .eq('user_id', userId);
+
+      if (profileError) throw profileError;
+
+      // 3. Create user role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userId,
+          role,
+        });
+
+      if (roleError) throw roleError;
+
+      return authData.user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      toast.success('Usuario creado correctamente');
+    },
+    onError: (error) => {
+      toast.error('Error al crear usuario: ' + error.message);
+    },
+  });
+}
+
+// ============ MATERIAL REQUESTS ============
+export interface MaterialRequest {
+  id: string;
+  requester_id: string;
+  status: 'pending' | 'approved' | 'rejected' | 'dispatched' | 'completed';
+  request_date: string;
+  approved_by: string | null;
+  approved_date: string | null;
+  ready_for_pickup: boolean;
+  ready_for_pickup_date: string | null;
+  picked_up: boolean;
+  picked_up_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaterialRequestItem {
+  id: string;
+  request_id: string;
+  material_id: string;
+  quantity_requested: number;
+  quantity_approved: number | null;
+  quantity_dispatched: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  inventory_items?: InventoryItem; // Joined data
+}
+
+export interface MaterialRequestWithItems extends MaterialRequest {
+  material_request_items?: MaterialRequestItem[];
+  requester?: Profile; // Joined data
+  approver?: Profile; // Joined data
+}
+
+export interface StockHistory {
+  id: string;
+  material_id: string;
+  quantity_change: number;
+  previous_quantity: number;
+  new_quantity: number;
+  operation_type: 'entry' | 'approval' | 'dispatch' | 'adjustment' | 'return';
+  related_request_id: string | null;
+  performed_by: string;
+  notes: string | null;
+  created_at: string;
+}
+
+// Queries
+export function useMaterialRequests(status?: string, requester_id?: string) {
+  return useQuery({
+    queryKey: ['material-requests', status, requester_id],
+    queryFn: async () => {
+      let query = supabase
+        .from('material_requests')
+        .select('*, profiles!requester_id(id, name, email), approved_by_profile:profiles!approved_by(id, name, email), material_request_items(*, inventory_items(*))')
+        .order('request_date', { ascending: false });
+      
+      if (status) {
+        query = query.eq('status', status);
+      }
+      if (requester_id) {
+        query = query.eq('requester_id', requester_id);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return data as MaterialRequestWithItems[];
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutos
+    gcTime: 1000 * 60 * 5, // 5 minutos
+  });
+}
+
+export function useMaterialRequestDetail(requestId: string) {
+  return useQuery({
+    queryKey: ['material-request', requestId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('material_requests')
+        .select('*, profiles!requester_id(id, name, email), approved_by_profile:profiles!approved_by(id, name, email), material_request_items(*, inventory_items(*))')
+        .eq('id', requestId)
+        .single();
+      
+      if (error) throw error;
+      return data as MaterialRequestWithItems;
+    },
+  });
+}
+
+export function useStockHistory(materialId?: string) {
+  return useQuery({
+    queryKey: ['stock-history', materialId],
+    queryFn: async () => {
+      let query = supabase
+        .from('stock_history')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (materialId) {
+        query = query.eq('material_id', materialId);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as StockHistory[];
+    },
+  });
+}
+
+// Mutations
+export function useCreateMaterialRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      requester_id,
+      items,
+      notes,
+    }: {
+      requester_id: string;
+      items: Array<{ material_id: string; quantity_requested: number; notes?: string }>;
+      notes?: string;
+    }) => {
+      // Create the request
+      const { data: request, error: requestError } = await supabase
+        .from('material_requests')
+        .insert({ requester_id, notes, status: 'pending' })
+        .select()
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Create the items
+      const itemsToInsert = items.map(item => ({
+        request_id: request.id,
+        material_id: item.material_id,
+        quantity_requested: item.quantity_requested,
+        notes: item.notes,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('material_request_items')
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      // Create notifications - only notify ADMIN about new requests
+      const notificationData = {
+        title: 'Nueva Solicitud de Materiales',
+        description: notes || 'Se ha creado una nueva solicitud de materiales',
+        notification_type: 'material_request' as const,
+        vehicle_id: null,
+        material_request_id: request.id,
+        created_by: requester_id,
+      };
+
+      // Notify only ADMIN
+      await supabase.from('notifications').insert({
+        ...notificationData,
+        recipient_role: 'admin',
+      });
+
+      return request;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Solicitud creada correctamente');
+    },
+    onError: (error) => {
+      toast.error('Error al crear solicitud: ' + error.message);
+    },
+  });
+}
+
+export function useApproveMaterialRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      approvedBy,
+      partialApprovals,
+    }: {
+      requestId: string;
+      approvedBy: string;
+      partialApprovals?: Array<{ itemId: string; quantity: number }>;
+    }) => {
+      // Get request with items
+      const { data: request, error: requestError } = await supabase
+        .from('material_requests')
+        .select('*, material_request_items(*)')
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Update each request item and deduct from stock
+      for (const item of request.material_request_items) {
+        const approvedQty = partialApprovals?.find(pa => pa.itemId === item.id)?.quantity || item.quantity_requested;
+
+        // Update request item
+        await supabase
+          .from('material_request_items')
+          .update({ quantity_approved: approvedQty })
+          .eq('id', item.id);
+
+        // Get current inventory
+        const { data: material, error: matError } = await supabase
+          .from('inventory_items')
+          .select('quantity, available_quantity')
+          .eq('id', item.material_id)
+          .single();
+
+        if (matError) throw matError;
+
+        const newAvailableQty = Math.max(0, material.available_quantity - approvedQty);
+
+        // Update inventory
+        await supabase
+          .from('inventory_items')
+          .update({ available_quantity: newAvailableQty })
+          .eq('id', item.material_id);
+
+        // Create stock history entry
+        await supabase
+          .from('stock_history')
+          .insert({
+            material_id: item.material_id,
+            quantity_change: -approvedQty,
+            previous_quantity: material.available_quantity,
+            new_quantity: newAvailableQty,
+            operation_type: 'approval',
+            related_request_id: requestId,
+            performed_by: approvedBy,
+            notes: `Aprobación de solicitud para ${approvedQty} unidades`,
+          });
+      }
+
+      // Update request status
+      const { data: updatedRequest, error: updateError } = await supabase
+        .from('material_requests')
+        .update({
+          status: 'approved',
+          approved_by: approvedBy,
+          approved_date: new Date().toISOString(),
+        })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // Create notifications when request is approved
+      // 1. Notify BODEGUERO to prepare for dispatch
+      await supabase.from('notifications').insert({
+        title: 'Solicitud Aprobada - Lista para Despacho',
+        description: 'Una solicitud de materiales ha sido aprobada y está lista para preparar el despacho',
+        notification_type: 'material_request',
+        vehicle_id: null,
+        material_request_id: requestId,
+        created_by: approvedBy,
+        recipient_role: 'bodeguero',
+      });
+
+      // 2. Notify SUPERVISOR (if they created the request) that their request is approved
+      if (request.requester_id) {
+        // Get requester role to see if they are supervisor
+        const { data: requesterRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', request.requester_id)
+          .single();
+
+        if (requesterRole?.role === 'supervisor') {
+          await supabase.from('notifications').insert({
+            title: 'Tu Solicitud de Materiales Fue Aprobada',
+            description: 'Tu solicitud ha sido aprobada. El bodeguero está preparando los materiales para retiro',
+            notification_type: 'material_request',
+            vehicle_id: null,
+            material_request_id: requestId,
+            created_by: approvedBy,
+            recipient_role: 'supervisor',
+          });
+        }
+      }
+
+      return updatedRequest;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-history'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Solicitud aprobada y stock actualizado');
+    },
+    onError: (error) => {
+      toast.error('Error al aprobar solicitud: ' + error.message);
+    },
+  });
+}
+
+export function useRejectMaterialRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, rejectedBy }: { requestId: string; rejectedBy: string }) => {
+      const { data, error } = await supabase
+        .from('material_requests')
+        .update({
+          status: 'rejected',
+          approved_by: rejectedBy,
+          approved_date: new Date().toISOString(),
+        })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      toast.success('Solicitud rechazada');
+    },
+    onError: (error) => {
+      toast.error('Error al rechazar solicitud: ' + error.message);
+    },
+  });
+}
+
+export function useDispatchMaterialRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, dispatchedBy }: { requestId: string; dispatchedBy: string }) => {
+      // Get request with items
+      const { data: request, error: requestError } = await supabase
+        .from('material_requests')
+        .select('*, material_request_items(*)')
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Update each request item
+      for (const item of request.material_request_items) {
+        await supabase
+          .from('material_request_items')
+          .update({ quantity_dispatched: item.quantity_approved || item.quantity_requested })
+          .eq('id', item.id);
+
+        // Create stock history entry
+        await supabase
+          .from('stock_history')
+          .insert({
+            material_id: item.material_id,
+            quantity_change: 0, // Stock ya fue deducido en aprobación
+            previous_quantity: 0,
+            new_quantity: 0,
+            operation_type: 'dispatch',
+            related_request_id: requestId,
+            performed_by: dispatchedBy,
+            notes: `Despacho de ${item.quantity_approved || item.quantity_requested} unidades`,
+          });
+      }
+
+      // Update request status
+      const { data: updatedRequest, error: updateError } = await supabase
+        .from('material_requests')
+        .update({ status: 'dispatched' })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      return updatedRequest;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-history'] });
+      toast.success('Solicitud despachada correctamente');
+    },
+    onError: (error) => {
+      toast.error('Error al despachar solicitud: ' + error.message);
+    },
+  });
+}
+
+// ============ NOTIFICATIONS ============
+export interface Notification {
+  id: string;
+  title: string;
+  description: string | null;
+  notification_type: 'vehicle_report' | 'material_request';
+  vehicle_id: string | null;
+  material_request_id: string | null;
+  created_by: string;
+  recipient_role: 'admin' | 'supervisor' | 'technician' | 'bodeguero';
+  read_at: string | null;
+  read_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCreateNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (notification: Omit<Notification, 'id' | 'read_at' | 'read_by' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notification)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Notification;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (error) => {
+      console.error('Error creating notification:', error);
+    },
+  });
+}
+
+export function useGetNotifications() {
+  return useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Notification[];
+    },
+    staleTime: 1000 * 30, // 30 segundos
+  });
+}
+
+export function useMarkNotificationAsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ notificationId, userId }: { notificationId: string; userId: string }) => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString(), read_by: userId })
+        .eq('id', notificationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Notification;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useMarkReadyForPickup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, markedBy }: { requestId: string; markedBy: string }) => {
+      // Get request details to notify requester (supervisor)
+      const { data: request, error: requestError } = await supabase
+        .from('material_requests')
+        .select('requester_id')
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Update request status
+      const { data: updatedRequest, error: updateError } = await supabase
+        .from('material_requests')
+        .update({
+          ready_for_pickup: true,
+          ready_for_pickup_date: new Date().toISOString(),
+        })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // Notify supervisor that their request is ready for pickup
+      if (request.requester_id) {
+        const { data: requesterRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', request.requester_id)
+          .single();
+
+        if (requesterRole?.role === 'supervisor') {
+          await supabase.from('notifications').insert({
+            title: 'Tu Solicitud está Lista para Retiro',
+            description: 'Los materiales solicitados están listos y disponibles para retiro',
+            notification_type: 'material_request',
+            vehicle_id: null,
+            material_request_id: requestId,
+            created_by: markedBy,
+            recipient_role: 'supervisor',
+          });
+        }
+      }
+
+      return updatedRequest;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Solicitud marcada como lista para retiro');
+    },
+    onError: (error) => {
+      toast.error('Error: ' + error.message);
+    },
+  });
+}
+
+export function useMarkAsPickedUp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, pickedUpBy }: { requestId: string; pickedUpBy: string }) => {
+      const { data: updatedRequest, error: updateError } = await supabase
+        .from('material_requests')
+        .update({
+          picked_up: true,
+          picked_up_date: new Date().toISOString(),
+        })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      return updatedRequest;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      toast.success('Solicitud marcada como retirada');
     },
     onError: (error) => {
       toast.error('Error: ' + error.message);

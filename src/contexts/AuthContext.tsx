@@ -10,7 +10,7 @@ interface AuthContextType {
     user_id: string;
     name: string;
     email: string;
-    role: 'admin' | 'supervisor' | 'technician';
+    role: 'admin' | 'supervisor' | 'technician' | 'bodeguero';
     active: boolean;
   } | null;
   loading: boolean;
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUserProfile({
         ...profile,
-        role: (roleData?.role as 'admin' | 'supervisor' | 'technician') || 'technician',
+        role: (roleData?.role as 'admin' | 'supervisor' | 'technician' | 'bodeguero') || 'technician',
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
