@@ -1172,6 +1172,49 @@ export function useMarkAsPickedUp() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ requestId, pickedUpBy }: { requestId: string; pickedUpBy: string }) => {
+      // Get the request with all its items
+      const { data: request, error: requestError } = await supabase
+        .from('material_requests')
+        .select(`
+          *,
+          material_request_items(
+            id,
+            material_id,
+            quantity_approved,
+            inventory_items(id, name, category)
+          )
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+      if (!request) throw new Error('Solicitud no encontrada');
+
+      // Create loans for tools
+      if (request.material_request_items) {
+        for (const item of request.material_request_items) {
+          const inventoryItem = item.inventory_items as any;
+          
+          // If it's a tool, create a loan
+          if (inventoryItem && inventoryItem.category === 'tool') {
+            const { error: loanError } = await supabase
+              .from('loans')
+              .insert({
+                item_id: inventoryItem.id,
+                quantity: item.quantity_approved || 0,
+                borrowed_by: pickedUpBy,
+                borrowed_at: new Date().toISOString(),
+                expected_return: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days default
+                notes: `Prestado desde solicitud de materiales #${requestId}`,
+                created_by: pickedUpBy,
+              });
+
+            if (loanError) throw loanError;
+          }
+        }
+      }
+
+      // Update request status to returned and mark as picked up
       const { data: updatedRequest, error: updateError } = await supabase
         .from('material_requests')
         .update({
@@ -1188,16 +1231,24 @@ export function useMarkAsPickedUp() {
       return updatedRequest;
     },
     onSuccess: () => {
-      // Invalidar todas las queries relacionadas a material-requests y forzar refetch
+      // Invalidar todas las queries relacionadas
       queryClient.invalidateQueries({ 
         queryKey: ['material-requests'],
+        refetchType: 'all'
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['loans'],
         refetchType: 'all'
       });
       queryClient.refetchQueries({
         queryKey: ['material-requests'],
         type: 'active'
       });
-      toast.success('Solicitud marcada como retirada');
+      queryClient.refetchQueries({
+        queryKey: ['loans'],
+        type: 'active'
+      });
+      toast.success('Solicitud marcada como retirada. Préstamos creados para herramientas');
     },
     onError: (error) => {
       toast.error('Error: ' + error.message);
