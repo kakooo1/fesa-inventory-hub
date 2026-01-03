@@ -24,8 +24,16 @@ export default function Notifications() {
   useEffect(() => {
     const currentUnreadCount = userNotifications.filter(n => !n.read_at).length;
     
+    console.log('📢 Notificaciones check:', {
+      currentUnreadCount,
+      previousCount: previousNotificationsCount.current,
+      soundEnabled,
+      hasIncreased: currentUnreadCount > previousNotificationsCount.current,
+    });
+    
     // Si el número de notificaciones sin leer aumentó y el sonido está habilitado
     if (soundEnabled && currentUnreadCount > previousNotificationsCount.current && currentUnreadCount > 0) {
+      console.log('🔊 Reproduciendo sonido de notificación');
       playSound();
     }
     
@@ -94,25 +102,39 @@ export default function Notifications() {
             description={`Tienes ${unreadCount} notificación${unreadCount !== 1 ? 'es' : ''} sin leer`}
           />
         </div>
-        <Button
-          variant={soundEnabled ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setSoundEnabled(!soundEnabled)}
-          className="gap-2"
-          title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
-        >
-          {soundEnabled ? (
-            <>
-              <Volume2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Sonido activado</span>
-            </>
-          ) : (
-            <>
-              <VolumeX className="h-4 w-4" />
-              <span className="hidden sm:inline">Sonido desactivado</span>
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              console.log('🔊 Prueba de sonido manual');
+              playSound();
+            }}
+            className="gap-2"
+            title="Probar sonido de notificación"
+          >
+            <span>🔊 Probar sonido</span>
+          </Button>
+          <Button
+            variant={soundEnabled ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="gap-2"
+            title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
+          >
+            {soundEnabled ? (
+              <>
+                <Volume2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Sonido activado</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="h-4 w-4" />
+                <span className="hidden sm:inline">Sonido desactivado</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Filter Tabs */}

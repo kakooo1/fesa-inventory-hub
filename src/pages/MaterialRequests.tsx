@@ -166,6 +166,7 @@ export default function MaterialRequests() {
           requestId: request.id,
           approvedBy: userProfile.user_id,
         });
+        console.log('🔊 Reproduciendo sonido en MaterialRequests approve');
         playNotificationSound();
         setDetailOpen(false);
         setSelectedRequest(null);
@@ -180,6 +181,7 @@ export default function MaterialRequests() {
           requestId: request.id,
           rejectedBy: userProfile.user_id,
         });
+        console.log('🔊 Reproduciendo sonido en MaterialRequests reject');
         playNotificationSound();
         setDetailOpen(false);
         setSelectedRequest(null);
@@ -292,6 +294,7 @@ export default function MaterialRequests() {
           requestId: request.id,
           markedBy: userProfile.user_id,
         });
+        console.log('🔊 Reproduciendo sonido en MaterialRequests markReady');
         playNotificationSound();
         setDetailOpen(false);
         setSelectedRequest(null);

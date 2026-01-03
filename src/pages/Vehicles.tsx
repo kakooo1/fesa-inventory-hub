@@ -110,6 +110,7 @@ export default function Vehicles() {
         await Promise.all(notifications.map(notif => createNotification.mutateAsync(notif)));
 
         // Reproducir sonido
+        console.log('🔊 Reproduciendo sonido en Vehicles');
         playNotificationSound();
 
         setNotificationDialogOpen(false);
