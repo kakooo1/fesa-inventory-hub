@@ -10,6 +10,7 @@ import { useMaterialRequests, MaterialRequestWithItems } from '@/hooks/useDataba
 interface MaterialRequestListProps {
   status?: string;
   requester_id?: string;
+  readyForPickup?: boolean;
   onApprove?: (request: MaterialRequestWithItems) => void;
   onReject?: (request: MaterialRequestWithItems) => void;
   onDispatch?: (request: MaterialRequestWithItems) => void;
@@ -25,6 +26,7 @@ interface MaterialRequestListProps {
 export const MaterialRequestList: React.FC<MaterialRequestListProps> = ({
   status,
   requester_id,
+  readyForPickup,
   onApprove,
   onReject,
   onDispatch,
@@ -40,9 +42,18 @@ export const MaterialRequestList: React.FC<MaterialRequestListProps> = ({
 
   // Filtrar por status exacto para asegurar que solo se muestren los que coinciden
   const filteredRequests = useMemo(() => {
-    if (!status) return requests;
-    return requests.filter(r => r.status === status);
-  }, [requests, status]);
+    let filtered = requests;
+    
+    if (status) {
+      filtered = filtered.filter(r => r.status === status);
+    }
+    
+    if (readyForPickup !== undefined) {
+      filtered = filtered.filter(r => r.ready_for_pickup === readyForPickup);
+    }
+    
+    return filtered;
+  }, [requests, status, readyForPickup]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {

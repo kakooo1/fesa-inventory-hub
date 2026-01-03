@@ -9,7 +9,6 @@ import {
   useMaterialRequests,
   useApproveMaterialRequest,
   useRejectMaterialRequest,
-  useDispatchMaterialRequest,
   useMarkReadyForPickup,
   useMarkAsPickedUp,
   MaterialRequestWithItems,
@@ -29,7 +28,6 @@ export default function MaterialRequests() {
 
   const approveMutation = useApproveMaterialRequest();
   const rejectMutation = useRejectMaterialRequest();
-  const dispatchMutation = useDispatchMaterialRequest();
   const markReadyMutation = useMarkReadyForPickup();
   const markPickedUpMutation = useMarkAsPickedUp();
 
@@ -87,27 +85,26 @@ export default function MaterialRequests() {
           </TabsContent>
 
           <TabsContent value="activas" className="mt-6">
-            {/* Mostrar solicitudes aprobadas y despachadas */}
+            {/* Mostrar solicitudes aprobadas */}
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-4">Aprobadas y Listas</h3>
+                <h3 className="text-lg font-semibold mb-4">Aprobadas</h3>
                 <MaterialRequestList
                   status="approved"
                   requester_id={userProfile.user_id}
-                  onMarkPickedUp={handleMarkPickedUp}
                   onViewDetails={(request) => {
                     setSelectedRequest(request);
                     setDetailOpen(true);
                   }}
-                  showPickupButton={true}
                 />
               </div>
 
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold mb-4">Listo para Retiro</h3>
                 <MaterialRequestList
-                  status="dispatched"
+                  status="approved"
                   requester_id={userProfile.user_id}
+                  readyForPickup={true}
                   onMarkPickedUp={handleMarkPickedUp}
                   onViewDetails={(request) => {
                     setSelectedRequest(request);
@@ -285,19 +282,6 @@ export default function MaterialRequests() {
 
   // ============ BODEGUERO VIEW ============
   if (isBodeguero) {
-    const handleDispatch = async (request: MaterialRequestWithItems) => {
-      try {
-        await dispatchMutation.mutateAsync({
-          requestId: request.id,
-          dispatchedBy: userProfile.user_id,
-        });
-        setDetailOpen(false);
-        setSelectedRequest(null);
-      } catch (error) {
-        console.error('Error al despachar:', error);
-      }
-    };
-
     const handleMarkReady = async (request: MaterialRequestWithItems) => {
       try {
         await markReadyMutation.mutateAsync({
@@ -315,22 +299,19 @@ export default function MaterialRequests() {
       <MainLayout>
         <PageHeader
           title="Despacho de Solicitudes"
-          description="Prepara y marca listo para retiro las solicitudes aprobadas"
+          description="Marca listo para retiro las solicitudes aprobadas"
         />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList>
-            <TabsTrigger value="aprobadas">Por Despachar</TabsTrigger>
-            <TabsTrigger value="despachadas">Listo para Retiro</TabsTrigger>
+            <TabsTrigger value="aprobadas">Por Marcar</TabsTrigger>
+            <TabsTrigger value="listos">Listo para Retiro</TabsTrigger>
           </TabsList>
 
           <TabsContent value="aprobadas" className="mt-6">
             <MaterialRequestList
               status="approved"
-              onDispatch={(request) => {
-                setSelectedRequest(request);
-                setDetailOpen(true);
-              }}
+              readyForPickup={false}
               onMarkReady={(request) => {
                 handleMarkReady(request);
               }}
@@ -338,22 +319,18 @@ export default function MaterialRequests() {
                 setSelectedRequest(request);
                 setDetailOpen(true);
               }}
-              showDispatchButtons={true}
               showReadyButton={true}
             />
           </TabsContent>
 
-          <TabsContent value="despachadas" className="mt-6">
+          <TabsContent value="listos" className="mt-6">
             <MaterialRequestList
-              status="dispatched"
-              onMarkReady={(request) => {
-                handleMarkReady(request);
-              }}
+              status="approved"
+              readyForPickup={true}
               onViewDetails={(request) => {
                 setSelectedRequest(request);
                 setDetailOpen(true);
               }}
-              showReadyButton={true}
             />
           </TabsContent>
         </Tabs>
@@ -362,9 +339,7 @@ export default function MaterialRequests() {
           request={selectedRequest}
           open={detailOpen}
           onOpenChange={setDetailOpen}
-          onDispatch={() => selectedRequest && handleDispatch(selectedRequest)}
-          isLoading={dispatchMutation.isPending || markReadyMutation.isPending}
-          showDispatchButtons={selectedRequest?.status === 'approved'}
+          isLoading={markReadyMutation.isPending}
         />
       </MainLayout>
     );
