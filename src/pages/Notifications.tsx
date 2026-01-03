@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Bell, Trash2, AlertCircle, Volume2, VolumeX } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGetNotifications, useMarkNotificationAsRead } from '@/hooks/useDatabase';
-import { useNotificationSound } from '@/hooks/useNotificationSound';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -17,28 +17,9 @@ export default function Notifications() {
   const markAsRead = useMarkNotificationAsRead();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const previousNotificationsCount = useRef(0);
-  const { playSound } = useNotificationSound();
 
-  // Reproducir sonido cuando lleguen notificaciones nuevas
-  useEffect(() => {
-    const currentUnreadCount = userNotifications.filter(n => !n.read_at).length;
-    
-    console.log('📢 Notificaciones check:', {
-      currentUnreadCount,
-      previousCount: previousNotificationsCount.current,
-      soundEnabled,
-      hasIncreased: currentUnreadCount > previousNotificationsCount.current,
-    });
-    
-    // Si el número de notificaciones sin leer aumentó y el sonido está habilitado
-    if (soundEnabled && currentUnreadCount > previousNotificationsCount.current && currentUnreadCount > 0) {
-      console.log('🔊 Reproduciendo sonido de notificación');
-      playSound();
-    }
-    
-    previousNotificationsCount.current = currentUnreadCount;
-  }, [userNotifications, soundEnabled, playSound]);
+  // Escuchar notificaciones en tiempo real
+  useRealtimeNotifications(userProfile?.role, soundEnabled);
 
   if (!userProfile) {
     return (
@@ -102,39 +83,25 @@ export default function Notifications() {
             description={`Tienes ${unreadCount} notificación${unreadCount !== 1 ? 'es' : ''} sin leer`}
           />
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              console.log('🔊 Prueba de sonido manual');
-              playSound();
-            }}
-            className="gap-2"
-            title="Probar sonido de notificación"
-          >
-            <span>🔊 Probar sonido</span>
-          </Button>
-          <Button
-            variant={soundEnabled ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="gap-2"
-            title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
-          >
-            {soundEnabled ? (
-              <>
-                <Volume2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Sonido activado</span>
-              </>
-            ) : (
-              <>
-                <VolumeX className="h-4 w-4" />
-                <span className="hidden sm:inline">Sonido desactivado</span>
-              </>
-            )}
-          </Button>
-        </div>
+        <Button
+          variant={soundEnabled ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          className="gap-2"
+          title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
+        >
+          {soundEnabled ? (
+            <>
+              <Volume2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Sonido activado</span>
+            </>
+          ) : (
+            <>
+              <VolumeX className="h-4 w-4" />
+              <span className="hidden sm:inline">Sonido desactivado</span>
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Filter Tabs */}

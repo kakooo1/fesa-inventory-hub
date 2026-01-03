@@ -25,8 +25,6 @@ export function useNotificationSound() {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioContextRef.current = audioContext;
       
-      console.log('✅ AudioContext inicializado:', audioContext.state);
-      
       // Intentar reanudar si está suspendido
       if (audioContext.state === 'suspended') {
         audioContext.resume().catch(() => {
@@ -36,7 +34,7 @@ export function useNotificationSound() {
 
       return audioContext;
     } catch (error) {
-      console.error('❌ Error inicializando AudioContext:', error);
+      console.error('Error inicializando AudioContext:', error);
       return null;
     }
   }, []);
@@ -46,11 +44,8 @@ export function useNotificationSound() {
       const audioContext = getAudioContext();
       
       if (!audioContext) {
-        console.warn('⚠️ AudioContext no disponible');
         return;
       }
-
-      console.log('🔊 Intentando reproducir sonido, estado:', audioContext.state);
 
       // Reanudar contexto si está suspendido
       if (audioContext.state === 'suspended') {
@@ -77,10 +72,8 @@ export function useNotificationSound() {
       // Reproducir por 0.5 segundos
       oscillator.start(now);
       oscillator.stop(now + 0.5);
-
-      console.log('✅ Sonido reproducido exitosamente');
     } catch (error) {
-      console.error('❌ Error reproduciendo sonido:', error);
+      console.error('Error reproduciendo sonido:', error);
     }
   }, [getAudioContext]);
 
