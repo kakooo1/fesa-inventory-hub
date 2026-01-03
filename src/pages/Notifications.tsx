@@ -12,7 +12,7 @@ import { es } from 'date-fns/locale';
 
 export default function Notifications() {
   const { userProfile } = useAuth();
-  const { data: allNotifications = [], isLoading } = useGetNotifications();
+  const { data: userNotifications = [], isLoading } = useGetNotifications(userProfile?.role);
   const markAsRead = useMarkNotificationAsRead();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
@@ -25,16 +25,8 @@ export default function Notifications() {
     );
   }
 
-  // Filter notifications based on user role
-  const userNotifications = allNotifications.filter(notification => {
-    // Admins see everything
-    if (userProfile.role === 'admin') return true;
-    // Other roles see notifications sent to them or created by them
-    return notification.recipient_role === userProfile.role || notification.created_by === userProfile.user_id;
-  });
-
-  // Further filter based on read status
-  const filteredNotifications = filter === 'unread'
+  // Filter based on read/unread status
+  const statusFilteredNotifications = filter === 'unread'
     ? userNotifications.filter(n => !n.read_at)
     : userNotifications;
 
@@ -102,7 +94,7 @@ export default function Notifications() {
 
       {/* Notifications List */}
       <div className="space-y-4">
-        {filteredNotifications.length === 0 ? (
+        {statusFilteredNotifications.length === 0 ? (
           <div className="text-center py-16 bg-card rounded-xl border">
             <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">
@@ -115,7 +107,7 @@ export default function Notifications() {
             </p>
           </div>
         ) : (
-          filteredNotifications.map((notification) => (
+          statusFilteredNotifications.map((notification) => (
             <div
               key={notification.id}
               className={`p-4 rounded-lg border transition-colors ${

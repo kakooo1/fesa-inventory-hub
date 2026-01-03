@@ -82,27 +82,30 @@ export default function Vehicles() {
   const submitNotification = async () => {
     if (notificationVehicle && notificationMessage.trim() && userProfile) {
       try {
-        // Create notification for bodeguero and admin
-        createNotification.mutate({
-          title: `Reporte de Vehículo: ${notificationVehicle.plate}`,
-          description: notificationMessage,
-          notification_type: 'vehicle_report',
-          vehicle_id: notificationVehicle.id,
-          material_request_id: null,
-          created_by: userProfile.user_id,
-          recipient_role: 'bodeguero',
-        });
+        // Create notifications for bodeguero and admin in a single batch
+        const notifications = [
+          {
+            title: `Reporte de Vehículo: ${notificationVehicle.plate}`,
+            description: notificationMessage,
+            notification_type: 'vehicle_report' as const,
+            vehicle_id: notificationVehicle.id,
+            material_request_id: null,
+            created_by: userProfile.user_id,
+            recipient_role: 'bodeguero' as const,
+          },
+          {
+            title: `Reporte de Vehículo: ${notificationVehicle.plate}`,
+            description: notificationMessage,
+            notification_type: 'vehicle_report' as const,
+            vehicle_id: notificationVehicle.id,
+            material_request_id: null,
+            created_by: userProfile.user_id,
+            recipient_role: 'admin' as const,
+          },
+        ];
         
-        // Also notify admins
-        createNotification.mutate({
-          title: `Reporte de Vehículo: ${notificationVehicle.plate}`,
-          description: notificationMessage,
-          notification_type: 'vehicle_report',
-          vehicle_id: notificationVehicle.id,
-          material_request_id: null,
-          created_by: userProfile.user_id,
-          recipient_role: 'admin',
-        });
+        // Create all notifications at once
+        await Promise.all(notifications.map(notif => createNotification.mutateAsync(notif)));
 
         setNotificationDialogOpen(false);
         setNotificationMessage('');

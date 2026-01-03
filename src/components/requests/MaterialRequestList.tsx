@@ -38,6 +38,12 @@ export const MaterialRequestList: React.FC<MaterialRequestListProps> = ({
 }) => {
   const { data: requests = [], isLoading } = useMaterialRequests(status, requester_id);
 
+  // Filtrar por status exacto para asegurar que solo se muestren los que coinciden
+  const filteredRequests = useMemo(() => {
+    if (!status) return requests;
+    return requests.filter(r => r.status === status);
+  }, [requests, status]);
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       pending: 'outline',
@@ -196,7 +202,7 @@ export const MaterialRequestList: React.FC<MaterialRequestListProps> = ({
     return <div className="p-4 text-center text-muted-foreground">Cargando solicitudes...</div>;
   }
 
-  if (requests.length === 0) {
+  if (filteredRequests.length === 0) {
     return (
       <div className="p-8 text-center bg-card rounded-lg border">
         <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -213,7 +219,7 @@ export const MaterialRequestList: React.FC<MaterialRequestListProps> = ({
   return (
     <DataTable
       columns={columns}
-      data={requests}
+      data={filteredRequests}
       keyExtractor={(request) => request.id}
       emptyMessage="No se encontraron solicitudes"
     />

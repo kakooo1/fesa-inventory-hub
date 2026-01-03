@@ -930,6 +930,7 @@ export function useApproveMaterialRequest() {
       queryClient.invalidateQueries({ queryKey: ['material-requests'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
       queryClient.invalidateQueries({ queryKey: ['stock-history'] });
+      // Invalidate all notification queries regardless of userRole filter
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Solicitud aprobada y stock actualizado');
     },
@@ -1063,14 +1064,21 @@ export function useCreateNotification() {
   });
 }
 
-export function useGetNotifications() {
+export function useGetNotifications(userRole?: string) {
   return useQuery({
-    queryKey: ['notifications'],
+    queryKey: ['notifications', userRole],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // Filter by user role if provided
+      if (userRole) {
+        query = query.eq('recipient_role', userRole);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as Notification[];
@@ -1150,6 +1158,7 @@ export function useMarkReadyForPickup() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      // Invalidate all notification queries regardless of userRole filter
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Solicitud marcada como lista para retiro');
     },
@@ -1179,7 +1188,15 @@ export function useMarkAsPickedUp() {
       return updatedRequest;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['material-requests'] });
+      // Invalidar todas las queries relacionadas a material-requests y forzar refetch
+      queryClient.invalidateQueries({ 
+        queryKey: ['material-requests'],
+        refetchType: 'all'
+      });
+      queryClient.refetchQueries({
+        queryKey: ['material-requests'],
+        type: 'active'
+      });
       toast.success('Solicitud marcada como retirada');
     },
     onError: (error) => {
