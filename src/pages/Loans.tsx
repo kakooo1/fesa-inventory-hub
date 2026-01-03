@@ -23,7 +23,7 @@ export default function Loans() {
 
   const filteredLoans = loans.filter(l => {
     const matchesSearch = l.item?.name?.toLowerCase().includes(search.toLowerCase()) ||
-                         l.borrowed_by.toLowerCase().includes(search.toLowerCase());
+                         (l.borrower_name || l.borrowed_by).toLowerCase().includes(search.toLowerCase());
     const isActive = !l.returned_at;
     
     if (activeTab === 'active') return matchesSearch && isActive;
@@ -46,7 +46,7 @@ export default function Loans() {
         </div>
       )
     },
-    { key: 'borrowedBy', header: 'Prestado a', render: (loan) => loan.borrowed_by },
+    { key: 'borrowedBy', header: 'Prestado a', render: (loan) => loan.borrower_name || loan.borrowed_by },
     { 
       key: 'borrowedAt', 
       header: 'Fecha préstamo',

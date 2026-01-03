@@ -116,6 +116,18 @@ export default function MaterialRequests() {
                   showPickupButton={true}
                 />
               </div>
+
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Retiradas</h3>
+                <MaterialRequestList
+                  status="returned"
+                  requester_id={userProfile.user_id}
+                  onViewDetails={(request) => {
+                    setSelectedRequest(request);
+                    setDetailOpen(true);
+                  }}
+                />
+              </div>
             </div>
           </TabsContent>
 
@@ -194,7 +206,8 @@ export default function MaterialRequests() {
             <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
             <TabsTrigger value="aprobadas">Aprobadas</TabsTrigger>
             <TabsTrigger value="rechazadas">Rechazadas</TabsTrigger>
-            <TabsTrigger value="despachadas">Despachadas</TabsTrigger>
+            <TabsTrigger value="despachadas">Listo para Retiro</TabsTrigger>
+            <TabsTrigger value="retiradas">Retiradas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pendientes" className="mt-6">
@@ -239,6 +252,16 @@ export default function MaterialRequests() {
           <TabsContent value="despachadas" className="mt-6">
             <MaterialRequestList
               status="dispatched"
+              onViewDetails={(request) => {
+                setSelectedRequest(request);
+                setDetailOpen(true);
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="retiradas" className="mt-6">
+            <MaterialRequestList
+              status="returned"
               onViewDetails={(request) => {
                 setSelectedRequest(request);
                 setDetailOpen(true);
@@ -298,7 +321,7 @@ export default function MaterialRequests() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList>
             <TabsTrigger value="aprobadas">Por Despachar</TabsTrigger>
-            <TabsTrigger value="despachadas">Despachadas</TabsTrigger>
+            <TabsTrigger value="despachadas">Listo para Retiro</TabsTrigger>
           </TabsList>
 
           <TabsContent value="aprobadas" className="mt-6">

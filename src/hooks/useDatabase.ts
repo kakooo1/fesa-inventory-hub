@@ -21,6 +21,7 @@ export interface Loan {
   item_id: string;
   quantity: number;
   borrowed_by: string;
+  borrower_name?: string;
   borrowed_at: string;
   expected_return: string;
   returned_at: string | null;
@@ -139,15 +140,33 @@ export function useDeleteInventoryItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Check if there are active loans for this item
+      const { data: activeLoans } = await supabase
+        .from('loans')
+        .select('id')
+        .eq('item_id', id)
+        .is('returned_at', null);
+
+      if (activeLoans && activeLoans.length > 0) {
+        throw new Error('No se puede eliminar este artículo porque tiene préstamos activos. Devuelve todos los préstamos primero.');
+      }
+
+      // Try to delete
       const { error } = await supabase.from('inventory_items').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        // Check if it's a foreign key constraint error
+        if (error.message.includes('foreign key constraint')) {
+          throw new Error('No se puede eliminar este artículo porque está siendo usado en solicitudes de materiales. Cancela o rechaza las solicitudes primero.');
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
       toast.success('Artículo eliminado');
     },
     onError: (error) => {
-      toast.error('Error al eliminar: ' + error.message);
+      toast.error('Error al eliminar: ' + (error as Error).message);
     },
   });
 }
@@ -214,6 +233,13 @@ export function useReturnLoan() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, item_id, quantity }: { id: string; item_id: string; quantity: number }) => {
+      // Get the loan to capture who returned it
+      const { data: loan } = await supabase
+        .from('loans')
+        .select('*')
+        .eq('id', id)
+        .single();
+
       // Update the loan
       const { error } = await supabase
         .from('loans')
@@ -224,21 +250,39 @@ export function useReturnLoan() {
       // Get current available quantity
       const { data: item, error: itemError } = await supabase
         .from('inventory_items')
-        .select('available_quantity')
+        .select('*')
         .eq('id', item_id)
         .single();
       
       if (itemError) throw itemError;
 
+      const newAvailableQty = item.available_quantity + quantity;
+
       // Restore available quantity
       await supabase
         .from('inventory_items')
-        .update({ available_quantity: item.available_quantity + quantity })
+        .update({ available_quantity: newAvailableQty })
         .eq('id', item_id);
+
+      // Create stock history entry for the return
+      if (loan) {
+        await supabase
+          .from('stock_history')
+          .insert({
+            material_id: item_id,
+            quantity_change: quantity,
+            previous_quantity: item.available_quantity,
+            new_quantity: newAvailableQty,
+            operation_type: 'return',
+            performed_by: loan.borrowed_by,
+            notes: `Devolución de préstamo #${id.slice(0, 8)}`,
+          });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-history'] });
       toast.success('Artículo devuelto');
     },
     onError: (error) => {
@@ -736,10 +780,10 @@ export function useApproveMaterialRequest() {
       approvedBy: string;
       partialApprovals?: Array<{ itemId: string; quantity: number }>;
     }) => {
-      // Get request with items
+      // Get request with items including inventory details
       const { data: request, error: requestError } = await supabase
         .from('material_requests')
-        .select('*, material_request_items(*)')
+        .select('*, material_request_items(*, inventory_items(*))')
         .eq('id', requestId)
         .single();
 
@@ -758,7 +802,7 @@ export function useApproveMaterialRequest() {
         // Get current inventory
         const { data: material, error: matError } = await supabase
           .from('inventory_items')
-          .select('quantity, available_quantity')
+          .select('*')
           .eq('id', item.material_id)
           .single();
 
@@ -785,6 +829,51 @@ export function useApproveMaterialRequest() {
             performed_by: approvedBy,
             notes: `Aprobación de solicitud para ${approvedQty} unidades`,
           });
+
+        // If it's a TOOL, create a LOAN automatically
+        if (material.category === 'tool') {
+          const expectedReturnDate = new Date();
+          expectedReturnDate.setDate(expectedReturnDate.getDate() + 30); // Default: 30 days
+
+          // Get borrower name from profiles
+          const { data: borrowerProfile } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('user_id', request.requester_id)
+            .single();
+
+          const borrowerName = borrowerProfile?.name || request.requester_id;
+
+          await supabase.from('loans').insert({
+            item_id: material.id,
+            quantity: approvedQty,
+            borrowed_by: request.requester_id,
+            borrower_name: borrowerName,
+            borrowed_at: new Date().toISOString(),
+            expected_return: expectedReturnDate.toISOString(),
+            notes: `Préstamo automático de solicitud #${requestId.slice(0, 8)}`,
+            created_by: approvedBy,
+          });
+
+          // Notify the borrower that a tool loan was created
+          const { data: borrowerRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', request.requester_id)
+            .single();
+
+          if (borrowerRole?.role === 'supervisor') {
+            await supabase.from('notifications').insert({
+              title: 'Herramienta Agregada a Tus Préstamos',
+              description: `La herramienta "${material.name}" (${approvedQty} unidades) ha sido agregada automáticamente a tus préstamos con vencimiento en 30 días`,
+              notification_type: 'material_request',
+              vehicle_id: null,
+              material_request_id: requestId,
+              created_by: approvedBy,
+              recipient_role: 'supervisor',
+            });
+          }
+        }
       }
 
       // Update request status
@@ -1077,6 +1166,7 @@ export function useMarkAsPickedUp() {
       const { data: updatedRequest, error: updateError } = await supabase
         .from('material_requests')
         .update({
+          status: 'returned',
           picked_up: true,
           picked_up_date: new Date().toISOString(),
         })
