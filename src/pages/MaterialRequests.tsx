@@ -48,6 +48,13 @@ export default function MaterialRequests() {
 
   // ============ SUPERVISOR VIEW ============
   if (isSupervisor) {
+    const handleMarkPickedUp = (request: MaterialRequestWithItems) => {
+      markPickedUpMutation.mutate({
+        requestId: request.id,
+        pickedUpBy: userProfile.user_id,
+      });
+    };
+
     return (
       <MainLayout>
         <PageHeader
@@ -64,7 +71,7 @@ export default function MaterialRequests() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList>
             <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
-            <TabsTrigger value="aprobadas">Aprobadas / Listas</TabsTrigger>
+            <TabsTrigger value="activas">Activas</TabsTrigger>
             <TabsTrigger value="rechazadas">Rechazadas</TabsTrigger>
           </TabsList>
 
@@ -79,24 +86,37 @@ export default function MaterialRequests() {
             />
           </TabsContent>
 
-          <TabsContent value="aprobadas" className="mt-6">
-            <MaterialRequestList
-              status="approved"
-              requester_id={userProfile.user_id}
-              onMarkPickedUp={(request) => {
-                markPickedUpMutation.mutate({
-                  requestId: request.id,
-                  pickedUpBy: userProfile.user_id,
-                });
-                setDetailOpen(false);
-                setSelectedRequest(null);
-              }}
-              onViewDetails={(request) => {
-                setSelectedRequest(request);
-                setDetailOpen(true);
-              }}
-              showPickupButton={true}
-            />
+          <TabsContent value="activas" className="mt-6">
+            {/* Mostrar solicitudes aprobadas y despachadas */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Aprobadas y Listas</h3>
+                <MaterialRequestList
+                  status="approved"
+                  requester_id={userProfile.user_id}
+                  onMarkPickedUp={handleMarkPickedUp}
+                  onViewDetails={(request) => {
+                    setSelectedRequest(request);
+                    setDetailOpen(true);
+                  }}
+                  showPickupButton={true}
+                />
+              </div>
+
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Listo para Retiro</h3>
+                <MaterialRequestList
+                  status="dispatched"
+                  requester_id={userProfile.user_id}
+                  onMarkPickedUp={handleMarkPickedUp}
+                  onViewDetails={(request) => {
+                    setSelectedRequest(request);
+                    setDetailOpen(true);
+                  }}
+                  showPickupButton={true}
+                />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="rechazadas" className="mt-6">
