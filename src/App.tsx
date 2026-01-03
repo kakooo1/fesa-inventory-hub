@@ -6,8 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
+
 import Materials from "./pages/Materials";
 import Tools from "./pages/Tools";
+import Equipments from "./pages/Equipments";
 import Loans from "./pages/Loans";
 import Vehicles from "./pages/Vehicles";
 import UsersPage from "./pages/Users";
@@ -79,6 +81,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Tools />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/equipments" 
+        element={
+          <ProtectedRoute>
+            <Equipments />
           </ProtectedRoute>
         } 
       />

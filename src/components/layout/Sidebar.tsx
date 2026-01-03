@@ -16,10 +16,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import fesaLogo from '@/assets/fesa-logo.png';
 import fesaIcon from '@/assets/fesa-icon.png';
 
+import { Monitor } from 'lucide-react';
+
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Materiales', href: '/materials', icon: Package },
   { name: 'Herramientas', href: '/tools', icon: Wrench },
+  { name: 'Equipos', href: '/equipments', icon: Monitor },
   { name: 'Préstamos', href: '/loans', icon: HandCoins },
   { name: 'Vehículos', href: '/vehicles', icon: Truck },
   { name: 'Usuarios', href: '/users', icon: Users, adminOnly: true },

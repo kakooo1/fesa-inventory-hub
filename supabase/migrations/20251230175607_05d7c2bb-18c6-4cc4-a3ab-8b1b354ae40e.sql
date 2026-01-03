@@ -1,5 +1,5 @@
 -- Create enums for item categories and statuses
-CREATE TYPE public.item_category AS ENUM ('material', 'tool');
+CREATE TYPE public.item_category AS ENUM ('material', 'tool', 'equipment');
 CREATE TYPE public.item_status AS ENUM ('available', 'borrowed', 'maintenance');
 CREATE TYPE public.vehicle_status AS ENUM ('active', 'maintenance', 'inactive');
 CREATE TYPE public.app_role AS ENUM ('admin', 'supervisor', 'technician');

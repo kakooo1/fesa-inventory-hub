@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 export interface InventoryItem {
   id: string;
   name: string;
-  category: 'material' | 'tool';
+  category: 'material' | 'tool' | 'equipment';
   quantity: number;
   available_quantity: number;
   unit: string;
@@ -73,7 +73,7 @@ export interface UserRole {
 }
 
 // ============ INVENTORY ITEMS ============
-export function useInventoryItems(category?: 'material' | 'tool') {
+export function useInventoryItems(category?: 'material' | 'tool' | 'equipment') {
   return useQuery({
     queryKey: ['inventory-items', category],
     queryFn: async () => {
@@ -85,6 +85,8 @@ export function useInventoryItems(category?: 'material' | 'tool') {
       if (error) throw error;
       return data as InventoryItem[];
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    gcTime: 1000 * 60 * 10, // 10 minutos (antes era cacheTime)
   });
 }
 
