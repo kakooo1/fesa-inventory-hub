@@ -1255,3 +1255,103 @@ export function useMarkAsPickedUp() {
     },
   });
 }
+
+// ============ EQUIPMENT REPAIRS ============
+export interface EquipmentRepair {
+  id: string;
+  equipment_name: string;
+  source: string;
+  description: string | null;
+  status: 'ingresado' | 'en_reparacion' | 'reparado' | 'no_reparable';
+  entry_date: string;
+  exit_date: string | null;
+  estimated_repair_date: string | null;
+  technician_assigned_to: string | null;
+  notes: string | null;
+  parts_replaced: string | null;
+  repair_cost: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useEquipmentRepairs() {
+  return useQuery({
+    queryKey: ['equipment-repairs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('equipment_repairs')
+        .select('*')
+        .order('entry_date', { ascending: false });
+      if (error) throw error;
+      return data as EquipmentRepair[];
+    },
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
+}
+
+export function useCreateEquipmentRepair() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (item: Omit<EquipmentRepair, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('equipment_repairs')
+        .insert(item)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as EquipmentRepair;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment-repairs'] });
+      toast.success('Equipo agregado a reparación');
+    },
+    onError: (error) => {
+      toast.error('Error: ' + error.message);
+    },
+  });
+}
+
+export function useUpdateEquipmentRepair() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...item }: Partial<EquipmentRepair> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('equipment_repairs')
+        .update(item)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as EquipmentRepair;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment-repairs'] });
+      toast.success('Equipo actualizado');
+    },
+    onError: (error) => {
+      toast.error('Error: ' + error.message);
+    },
+  });
+}
+
+export function useDeleteEquipmentRepair() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('equipment_repairs')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment-repairs'] });
+      toast.success('Equipo eliminado');
+    },
+    onError: (error) => {
+      toast.error('Error: ' + error.message);
+    },
+  });
+}

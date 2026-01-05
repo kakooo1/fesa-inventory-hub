@@ -28,6 +28,7 @@ const navigation = [
   { name: 'EPP', href: '/epp', icon: Shield, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Equipos en Reparación', href: '/equipment-repairs', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Solicitudes', href: '/material-requests', icon: FileText, rolesAllowed: ['admin', 'supervisor', 'bodeguero'] },
   { name: 'Vehículos', href: '/vehicles', icon: Truck, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },

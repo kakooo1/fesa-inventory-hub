@@ -12,6 +12,7 @@ import Clothing from "./pages/Clothing";
 import EPP from "./pages/EPP";
 import Tools from "./pages/Tools";
 import Equipments from "./pages/Equipments";
+import EquipmentRepairs from "./pages/EquipmentRepairs";
 import Loans from "./pages/Loans";
 import MaterialRequests from "./pages/MaterialRequests";
 import Vehicles from "./pages/Vehicles";
@@ -114,6 +115,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
             <Equipments />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/equipment-repairs" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
+            <EquipmentRepairs />
           </ProtectedRoute>
         } 
       />
