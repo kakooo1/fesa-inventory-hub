@@ -32,7 +32,7 @@ export default function Tools() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
-  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'supervisor' || userProfile?.role === 'bodeguero';
+  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero';
   const canDelete = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero';
 
   const filteredItems = items.filter(i => 

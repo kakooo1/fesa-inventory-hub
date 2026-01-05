@@ -23,11 +23,11 @@ import fesaIcon from '@/assets/fesa-icon.png';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, rolesAllowed: ['admin', 'technician', 'bodeguero'], supervisorLabel: 'Mi Dashboard' },
-  { name: 'Materiales', href: '/materials', icon: Package, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
-  { name: 'Ropa y Uniformes', href: '/clothing', icon: Shirt, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
-  { name: 'EPP', href: '/epp', icon: Shield, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
-  { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
-  { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Materiales', href: '/materials', icon: Package, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
+  { name: 'Ropa y Uniformes', href: '/clothing', icon: Shirt, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
+  { name: 'EPP', href: '/epp', icon: Shield, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
+  { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
+  { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
   { name: 'Equipos en Reparación', href: '/equipment-repairs', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
   { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
   { name: 'Solicitudes', href: '/material-requests', icon: FileText, rolesAllowed: ['admin', 'supervisor', 'bodeguero'] },

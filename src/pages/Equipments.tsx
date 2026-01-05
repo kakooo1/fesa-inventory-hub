@@ -35,7 +35,7 @@ export default function Equipments() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'supervisor' || userProfile?.role === 'bodeguero';
+  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero';
   const canDelete = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero';
 
   const filteredItems = useMemo(() => 
