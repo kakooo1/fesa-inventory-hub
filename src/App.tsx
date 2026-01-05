@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import SupervisorDashboard from "./pages/SupervisorDashboard";
+import TechnicianDashboard from "./pages/TechnicianDashboard";
 
 import Materials from "./pages/Materials";
 import Clothing from "./pages/Clothing";
@@ -76,8 +77,10 @@ function AppRoutes() {
         element={
           user && userProfile?.role === 'supervisor' ? (
             <SupervisorDashboard />
+          ) : user && userProfile?.role === 'technician' ? (
+            <TechnicianDashboard />
           ) : (
-            <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
+            <ProtectedRoute allowedRoles={['admin', 'bodeguero']}>
               <Dashboard />
             </ProtectedRoute>
           )
@@ -86,7 +89,7 @@ function AppRoutes() {
       <Route 
         path="/materials" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Materials />
           </ProtectedRoute>
         } 
@@ -94,7 +97,7 @@ function AppRoutes() {
       <Route 
         path="/clothing" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Clothing />
           </ProtectedRoute>
         } 
@@ -102,7 +105,7 @@ function AppRoutes() {
       <Route 
         path="/epp" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <EPP />
           </ProtectedRoute>
         } 
@@ -110,7 +113,7 @@ function AppRoutes() {
       <Route 
         path="/tools" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Tools />
           </ProtectedRoute>
         } 
@@ -118,7 +121,7 @@ function AppRoutes() {
       <Route 
         path="/equipments" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Equipments />
           </ProtectedRoute>
         } 
@@ -134,7 +137,7 @@ function AppRoutes() {
       <Route 
         path="/loans" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'bodeguero']}>
             <Loans />
           </ProtectedRoute>
         } 
@@ -142,7 +145,7 @@ function AppRoutes() {
       <Route 
         path="/material-requests" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'bodeguero', 'technician']}>
             <MaterialRequests />
           </ProtectedRoute>
         } 
@@ -150,7 +153,7 @@ function AppRoutes() {
       <Route 
         path="/vehicles" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Vehicles />
           </ProtectedRoute>
         } 

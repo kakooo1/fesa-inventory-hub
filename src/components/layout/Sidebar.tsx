@@ -22,16 +22,16 @@ import fesaLogo from '@/assets/fesa-logo.png';
 import fesaIcon from '@/assets/fesa-icon.png';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, rolesAllowed: ['admin', 'technician', 'bodeguero'], supervisorLabel: 'Mi Dashboard' },
-  { name: 'Materiales', href: '/materials', icon: Package, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'Ropa y Uniformes', href: '/clothing', icon: Shirt, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'EPP', href: '/epp', icon: Shield, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'Equipos en Reparación', href: '/equipment-repairs', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'Solicitudes', href: '/material-requests', icon: FileText, rolesAllowed: ['admin', 'supervisor', 'bodeguero'] },
-  { name: 'Vehículos', href: '/vehicles', icon: Truck, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, rolesAllowed: ['admin', 'bodeguero'], supervisorLabel: 'Mi Dashboard', technicianLabel: 'Mi Dashboard' },
+  { name: 'Materiales', href: '/materials', icon: Package, rolesAllowed: ['admin', 'bodeguero', 'supervisor'] },
+  { name: 'Ropa y Uniformes', href: '/clothing', icon: Shirt, rolesAllowed: ['admin', 'bodeguero', 'supervisor'] },
+  { name: 'EPP', href: '/epp', icon: Shield, rolesAllowed: ['admin', 'bodeguero', 'supervisor'] },
+  { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'bodeguero', 'supervisor'] },
+  { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'bodeguero', 'supervisor'] },
+  { name: 'Equipos en Reparación', href: '/equipment-repairs', icon: Wrench, rolesAllowed: ['admin', 'bodeguero', 'supervisor', 'technician'] },
+  { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'bodeguero', 'supervisor'] },
+  { name: 'Solicitudes', href: '/material-requests', icon: FileText, rolesAllowed: ['admin', 'supervisor', 'bodeguero', 'technician'] },
+  { name: 'Vehículos', href: '/vehicles', icon: Truck, rolesAllowed: ['admin', 'bodeguero', 'supervisor'] },
   { name: 'Notificaciones', href: '/notifications', icon: Bell, rolesAllowed: ['admin', 'supervisor', 'technician', 'bodeguero'] },
   { name: 'Usuarios', href: '/users', icon: Users, adminOnly: true },
 ];
@@ -85,7 +85,7 @@ export function Sidebar() {
               )} />
               {!collapsed && (
                 <span className="font-medium truncate">
-                  {userProfile?.role === 'supervisor' && item.supervisorLabel ? item.supervisorLabel : item.name}
+                  {userProfile?.role === 'supervisor' && item.supervisorLabel ? item.supervisorLabel : userProfile?.role === 'technician' && item.technicianLabel ? item.technicianLabel : item.name}
                 </span>
               )}
             </Link>
