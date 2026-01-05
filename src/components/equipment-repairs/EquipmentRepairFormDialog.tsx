@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,6 @@ const formSchema = z.object({
   notes: z.string().max(1000).optional(),
   estimated_repair_date: z.string().optional(),
   parts_replaced: z.string().max(500).optional(),
-  repair_cost: z.coerce.number().min(0).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -48,6 +48,7 @@ interface EquipmentRepairFormDialogProps {
 }
 
 export function EquipmentRepairFormDialog({ open, onOpenChange, repair }: EquipmentRepairFormDialogProps) {
+  const { userProfile } = useAuth();
   const createRepair = useCreateEquipmentRepair();
   const updateRepair = useUpdateEquipmentRepair();
   const isEditing = !!repair;
@@ -62,7 +63,6 @@ export function EquipmentRepairFormDialog({ open, onOpenChange, repair }: Equipm
       notes: repair?.notes || '',
       estimated_repair_date: repair?.estimated_repair_date?.split('T')[0] || '',
       parts_replaced: repair?.parts_replaced || '',
-      repair_cost: repair?.repair_cost || undefined,
     },
   });
 
@@ -76,7 +76,6 @@ export function EquipmentRepairFormDialog({ open, onOpenChange, repair }: Equipm
         notes: repair.notes || '',
         estimated_repair_date: repair.estimated_repair_date?.split('T')[0] || '',
         parts_replaced: repair.parts_replaced || '',
-        repair_cost: repair.repair_cost || undefined,
       });
     } else if (open && !repair) {
       form.reset({
@@ -87,7 +86,6 @@ export function EquipmentRepairFormDialog({ open, onOpenChange, repair }: Equipm
         notes: '',
         estimated_repair_date: '',
         parts_replaced: '',
-        repair_cost: undefined,
       });
     }
   }, [open, repair, form]);
@@ -98,7 +96,6 @@ export function EquipmentRepairFormDialog({ open, onOpenChange, repair }: Equipm
         id: repair.id,
         ...data,
         estimated_repair_date: data.estimated_repair_date || null,
-        repair_cost: data.repair_cost || null,
       });
     } else {
       createRepair.mutate({
@@ -106,9 +103,8 @@ export function EquipmentRepairFormDialog({ open, onOpenChange, repair }: Equipm
         entry_date: new Date().toISOString(),
         exit_date: null,
         technician_assigned_to: null,
-        created_by: null,
+        created_by: userProfile?.user_id || null,
         estimated_repair_date: data.estimated_repair_date || null,
-        repair_cost: data.repair_cost || null,
       });
     }
     onOpenChange(false);
@@ -232,26 +228,6 @@ export function EquipmentRepairFormDialog({ open, onOpenChange, repair }: Equipm
                       placeholder="Ej: Cilindro principal, Sello de aceite, Válvula de entrada"
                       className="resize-none"
                       rows={2}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Costo de Reparación */}
-            <FormField
-              control={form.control}
-              name="repair_cost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Costo de Reparación</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
                       {...field}
                     />
                   </FormControl>

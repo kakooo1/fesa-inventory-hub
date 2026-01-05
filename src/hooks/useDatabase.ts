@@ -1269,7 +1269,6 @@ export interface EquipmentRepair {
   technician_assigned_to: string | null;
   notes: string | null;
   parts_replaced: string | null;
-  repair_cost: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

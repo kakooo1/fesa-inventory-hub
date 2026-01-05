@@ -34,13 +34,19 @@ export default function EquipmentRepairs() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [repairToDelete, setRepairToDelete] = useState<EquipmentRepair | null>(null);
 
-  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero' || userProfile?.role === 'technician';
+  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero' || userProfile?.role === 'technician' || userProfile?.role === 'supervisor';
   const canDelete = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero';
+  const isSupervisor = userProfile?.role === 'supervisor';
 
-  const filteredRepairs = repairs.filter(r => 
-    r.equipment_name.toLowerCase().includes(search.toLowerCase()) ||
-    r.source.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRepairs = repairs.filter(r => {
+    // Supervisores solo ven equipos que ellos crearon
+    if (isSupervisor && r.created_by !== userProfile?.user_id) {
+      return false;
+    }
+    
+    return r.equipment_name.toLowerCase().includes(search.toLowerCase()) ||
+      r.source.toLowerCase().includes(search.toLowerCase());
+  });
 
   const handleEdit = (repair: EquipmentRepair) => {
     setEditRepair(repair);
