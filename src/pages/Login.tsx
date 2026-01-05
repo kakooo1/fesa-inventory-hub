@@ -88,7 +88,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          © 2024 FESA Ltda. Todos los derechos reservados.
+          © 2026 FESA Ltda. Todos los derechos reservados.
         </p>
       </div>
     </div>

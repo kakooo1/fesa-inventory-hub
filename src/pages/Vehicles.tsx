@@ -51,8 +51,8 @@ export default function Vehicles() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
 
-  const canEdit = userProfile?.role === 'admin';
-  const canDelete = userProfile?.role === 'admin';
+  const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero';
+  const canDelete = userProfile?.role === 'admin' || userProfile?.role === 'bodeguero';
   const isSupervisor = userProfile?.role === 'supervisor';
 
   const filteredVehicles = vehicles.filter(v => {

@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 
 import Materials from "./pages/Materials";
+import Clothing from "./pages/Clothing";
+import EPP from "./pages/EPP";
 import Tools from "./pages/Tools";
 import Equipments from "./pages/Equipments";
 import Loans from "./pages/Loans";
@@ -80,6 +82,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
             <Materials />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/clothing" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+            <Clothing />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/epp" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+            <EPP />
           </ProtectedRoute>
         } 
       />

@@ -1,14 +1,18 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotificationSound } from './useNotificationSound';
+import type { Notification } from './useDatabase';
 
 /**
  * Hook que escucha notificaciones en tiempo real
- * Reproduce sonido cuando llega una notificación NUEVA
- * Funciona incluso si el usuario no está en la página de Notificaciones
+ * - Reproduce sonido cuando llega una notificación NUEVA
+ * - Actualiza automáticamente la lista de notificaciones en la UI sin recargar
+ * - Funciona incluso si el usuario no está en la página de Notificaciones
  */
 export function useRealtimeNotifications(userRole?: string, soundEnabled: boolean = true) {
   const { playSound } = useNotificationSound();
+  const queryClient = useQueryClient();
   const isInitializingRef = useRef(true);
   const channelRef = useRef<any>(null);
 
@@ -16,7 +20,13 @@ export function useRealtimeNotifications(userRole?: string, soundEnabled: boolea
     if (soundEnabled && !isInitializingRef.current) {
       playSound();
     }
-  }, [soundEnabled, playSound]);
+    
+    // Refetch inmediato del query de notificaciones para actualizar la lista en tiempo real
+    if (!isInitializingRef.current) {
+      queryClient.invalidateQueries({ queryKey: ['notifications', userRole] });
+      queryClient.refetchQueries({ queryKey: ['notifications', userRole] });
+    }
+  }, [soundEnabled, playSound, queryClient, userRole]);
 
   useEffect(() => {
     if (!userRole) return;
@@ -40,8 +50,25 @@ export function useRealtimeNotifications(userRole?: string, soundEnabled: boolea
           table: 'notifications',
           filter: `recipient_role=eq.${userRole}`,
         },
-        () => {
-          handleNewNotification();
+        async (payload) => {
+          // Reproducir sonido
+          if (soundEnabled && !isInitializingRef.current) {
+            playSound();
+          }
+
+          // Actualizar el cache de React Query directamente con la nueva notificación
+          if (!isInitializingRef.current) {
+            const newNotification = payload.new as Notification;
+            
+            queryClient.setQueryData<Notification[]>(
+              ['notifications', userRole],
+              (oldData) => {
+                if (!oldData) return [newNotification];
+                // Agregar al inicio (más reciente primero)
+                return [newNotification, ...oldData];
+              }
+            );
+          }
         }
       )
       .subscribe();
@@ -55,5 +82,5 @@ export function useRealtimeNotifications(userRole?: string, soundEnabled: boolea
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [userRole, handleNewNotification]);
+  }, [userRole, soundEnabled, queryClient, playSound]);
 }

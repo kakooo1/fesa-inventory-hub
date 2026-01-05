@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 export interface InventoryItem {
   id: string;
   name: string;
-  category: 'material' | 'tool' | 'equipment';
+  category: 'material' | 'tool' | 'equipment' | 'clothing' | 'epp';
   quantity: number;
   available_quantity: number;
   unit: string;
