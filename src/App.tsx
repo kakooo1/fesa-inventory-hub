@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
+import SupervisorDashboard from "./pages/SupervisorDashboard";
 
 import Materials from "./pages/Materials";
 import Clothing from "./pages/Clothing";
@@ -74,7 +75,7 @@ function AppRoutes() {
         path="/" 
         element={
           user && userProfile?.role === 'supervisor' ? (
-            <Navigate to="/equipment-repairs" replace />
+            <SupervisorDashboard />
           ) : (
             <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
               <Dashboard />
