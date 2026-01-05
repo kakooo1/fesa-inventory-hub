@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLoans, useReturnLoan, Loan, InventoryItem } from '@/hooks/useDatabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function Loans() {
+  const { userProfile } = useAuth();
   const { data: loans = [], isLoading } = useLoans();
   const returnLoan = useReturnLoan();
   
@@ -22,6 +24,11 @@ export default function Loans() {
   const [activeTab, setActiveTab] = useState('active');
 
   const filteredLoans = loans.filter(l => {
+    // Si es supervisor, solo mostrar sus propios préstamos
+    if (userProfile?.role === 'supervisor' && l.borrowed_by !== userProfile?.user_id) {
+      return false;
+    }
+    
     const matchesSearch = l.item?.name?.toLowerCase().includes(search.toLowerCase()) ||
                          (l.borrower_name || l.borrowed_by).toLowerCase().includes(search.toLowerCase());
     const isActive = !l.returned_at;

@@ -51,7 +51,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -73,15 +73,19 @@ function AppRoutes() {
       <Route 
         path="/" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
-            <Dashboard />
-          </ProtectedRoute>
+          user && userProfile?.role === 'supervisor' ? (
+            <Navigate to="/equipment-repairs" replace />
+          ) : (
+            <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
+              <Dashboard />
+            </ProtectedRoute>
+          )
         } 
       />
       <Route 
         path="/materials" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
             <Materials />
           </ProtectedRoute>
         } 
@@ -89,7 +93,7 @@ function AppRoutes() {
       <Route 
         path="/clothing" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
             <Clothing />
           </ProtectedRoute>
         } 
@@ -97,7 +101,7 @@ function AppRoutes() {
       <Route 
         path="/epp" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
             <EPP />
           </ProtectedRoute>
         } 
@@ -105,7 +109,7 @@ function AppRoutes() {
       <Route 
         path="/tools" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
             <Tools />
           </ProtectedRoute>
         } 
@@ -113,7 +117,7 @@ function AppRoutes() {
       <Route 
         path="/equipments" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
             <Equipments />
           </ProtectedRoute>
         } 
@@ -121,7 +125,7 @@ function AppRoutes() {
       <Route 
         path="/equipment-repairs" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
             <EquipmentRepairs />
           </ProtectedRoute>
         } 

@@ -29,7 +29,7 @@ const navigation = [
   { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Equipos en Reparación', href: '/equipment-repairs', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
-  { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
   { name: 'Solicitudes', href: '/material-requests', icon: FileText, rolesAllowed: ['admin', 'supervisor', 'bodeguero'] },
   { name: 'Vehículos', href: '/vehicles', icon: Truck, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
   { name: 'Notificaciones', href: '/notifications', icon: Bell, rolesAllowed: ['admin', 'supervisor', 'technician', 'bodeguero'] },
