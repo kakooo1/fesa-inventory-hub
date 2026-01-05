@@ -488,6 +488,7 @@ export function useUpdateProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['current-profile'] });
       toast.success('Perfil actualizado');
     },
     onError: (error) => {

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useRealtimeProfiles } from "@/hooks/useRealtimeProfiles";
 import Dashboard from "./pages/Dashboard";
 import SupervisorDashboard from "./pages/SupervisorDashboard";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
@@ -179,6 +180,13 @@ function AppRoutes() {
   );
 }
 
+function AppWithRealtime() {
+  // Initialize realtime listeners globally
+  useRealtimeProfiles();
+  
+  return <AppRoutes />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -186,7 +194,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppRoutes />
+          <AppWithRealtime />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
