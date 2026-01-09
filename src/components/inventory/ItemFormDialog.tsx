@@ -35,7 +35,7 @@ type FormData = z.infer<typeof formSchema>;
 interface ItemFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category: 'material' | 'tool';
+  category: 'material' | 'tool' | 'clothing' | 'epp';
   item?: InventoryItem | null;
 }
 
@@ -100,9 +100,19 @@ export function ItemFormDialog({ open, onOpenChange, category, item }: ItemFormD
     onOpenChange(false);
   };
 
+  const getCategoryLabel = (cat: string) => {
+    switch (cat) {
+      case 'material': return 'Material';
+      case 'tool': return 'Herramienta';
+      case 'clothing': return 'Prenda';
+      case 'epp': return 'EPP';
+      default: return 'Item';
+    }
+  };
+
   const title = isEditing 
-    ? `Editar ${category === 'material' ? 'Material' : 'Herramienta'}`
-    : `Agregar ${category === 'material' ? 'Material' : 'Herramienta'}`;
+    ? `Editar ${getCategoryLabel(category)}`
+    : `Agregar ${getCategoryLabel(category)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

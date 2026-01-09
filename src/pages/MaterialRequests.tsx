@@ -45,6 +45,119 @@ export default function MaterialRequests() {
   const isAdmin = userProfile.role === 'admin';
   const isSupervisor = userProfile.role === 'supervisor';
   const isBodeguero = userProfile.role === 'bodeguero';
+  const isTechnician = userProfile.role === 'technician';
+
+  // ============ TECHNICIAN VIEW ============
+  if (isTechnician) {
+    const handleMarkPickedUp = (request: MaterialRequestWithItems) => {
+      markPickedUpMutation.mutate({
+        requestId: request.id,
+        pickedUpBy: userProfile.user_id,
+      });
+    };
+
+    return (
+      <MainLayout>
+        <PageHeader
+          title="Mis Solicitudes de Materiales"
+          description="Crea y gestiona tus solicitudes de materiales"
+          actions={
+            <Button onClick={() => setFormOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nueva Solicitud
+            </Button>
+          }
+        />
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+          <TabsList>
+            <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
+            <TabsTrigger value="activas">Activas</TabsTrigger>
+            <TabsTrigger value="rechazadas">Rechazadas</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pendientes" className="mt-6">
+            <MaterialRequestList
+              status="pending"
+              requester_id={userProfile.user_id}
+              onViewDetails={(request) => {
+                setSelectedRequest(request);
+                setDetailOpen(true);
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="activas" className="mt-6">
+            {/* Mostrar solicitudes aprobadas */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Aprobadas</h3>
+                <MaterialRequestList
+                  status="approved"
+                  requester_id={userProfile.user_id}
+                  onViewDetails={(request) => {
+                    setSelectedRequest(request);
+                    setDetailOpen(true);
+                  }}
+                />
+              </div>
+
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Listo para Retiro</h3>
+                <MaterialRequestList
+                  status="approved"
+                  requester_id={userProfile.user_id}
+                  readyForPickup={true}
+                  onMarkPickedUp={handleMarkPickedUp}
+                  onViewDetails={(request) => {
+                    setSelectedRequest(request);
+                    setDetailOpen(true);
+                  }}
+                  showPickupButton={true}
+                />
+              </div>
+
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Retiradas</h3>
+                <MaterialRequestList
+                  status="returned"
+                  requester_id={userProfile.user_id}
+                  onViewDetails={(request) => {
+                    setSelectedRequest(request);
+                    setDetailOpen(true);
+                  }}
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="rechazadas" className="mt-6">
+            <MaterialRequestList
+              status="rejected"
+              requester_id={userProfile.user_id}
+              onViewDetails={(request) => {
+                setSelectedRequest(request);
+                setDetailOpen(true);
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+
+        <MaterialRequestForm
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          requesterId={userProfile.user_id}
+          onSuccess={() => setActiveTab('pendientes')}
+        />
+
+        <RequestDetailDialog
+          request={selectedRequest}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
+      </MainLayout>
+    );
+  }
 
   // ============ SUPERVISOR VIEW ============
   if (isSupervisor) {
@@ -350,7 +463,7 @@ export default function MaterialRequests() {
     );
   }
 
-  // ============ DEFAULT VIEW (TECHNICIAN or other roles) ============
+  // ============ DEFAULT VIEW (other roles) ============
   return (
     <MainLayout>
       <PageHeader

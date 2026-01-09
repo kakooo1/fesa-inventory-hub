@@ -83,7 +83,9 @@ export function Sidebar() {
                 isActive && "animate-pulse-glow"
               )} />
               {!collapsed && (
-                <span className="font-medium truncate">{item.name}</span>
+                <span className="font-medium truncate">
+                  {userProfile?.role === 'supervisor' && item.supervisorLabel ? item.supervisorLabel : userProfile?.role === 'technician' && item.technicianLabel ? item.technicianLabel : item.name}
+                </span>
               )}
             </Link>
           );

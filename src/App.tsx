@@ -5,9 +5,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useRealtimeProfiles } from "@/hooks/useRealtimeProfiles";
 import Dashboard from "./pages/Dashboard";
+import SupervisorDashboard from "./pages/SupervisorDashboard";
+import TechnicianDashboard from "./pages/TechnicianDashboard";
 
 import Materials from "./pages/Materials";
+import Clothing from "./pages/Clothing";
+import EPP from "./pages/EPP";
 import Tools from "./pages/Tools";
 import Equipments from "./pages/Equipments";
 import Repairs from "./pages/Repairs";
@@ -50,7 +55,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -72,23 +77,45 @@ function AppRoutes() {
       <Route 
         path="/" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
-            <Dashboard />
-          </ProtectedRoute>
+          user && userProfile?.role === 'supervisor' ? (
+            <SupervisorDashboard />
+          ) : user && userProfile?.role === 'technician' ? (
+            <TechnicianDashboard />
+          ) : (
+            <ProtectedRoute allowedRoles={['admin', 'bodeguero']}>
+              <Dashboard />
+            </ProtectedRoute>
+          )
         } 
       />
       <Route 
         path="/materials" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Materials />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/clothing" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
+            <Clothing />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/epp" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
+            <EPP />
           </ProtectedRoute>
         } 
       />
       <Route 
         path="/tools" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Tools />
           </ProtectedRoute>
         } 
@@ -96,7 +123,7 @@ function AppRoutes() {
       <Route 
         path="/equipments" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Equipments />
           </ProtectedRoute>
         } 
@@ -120,7 +147,7 @@ function AppRoutes() {
       <Route 
         path="/loans" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'bodeguero']}>
             <Loans />
           </ProtectedRoute>
         } 
@@ -128,7 +155,7 @@ function AppRoutes() {
       <Route 
         path="/material-requests" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'bodeguero']}>
+          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'bodeguero', 'technician']}>
             <MaterialRequests />
           </ProtectedRoute>
         } 
@@ -136,7 +163,7 @@ function AppRoutes() {
       <Route 
         path="/vehicles" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'technician', 'bodeguero', 'supervisor']}>
+          <ProtectedRoute allowedRoles={['admin', 'bodeguero', 'supervisor']}>
             <Vehicles />
           </ProtectedRoute>
         } 
@@ -162,6 +189,13 @@ function AppRoutes() {
   );
 }
 
+function AppWithRealtime() {
+  // Initialize realtime listeners globally
+  useRealtimeProfiles();
+  
+  return <AppRoutes />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -169,7 +203,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppRoutes />
+          <AppWithRealtime />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
