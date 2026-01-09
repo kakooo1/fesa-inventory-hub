@@ -80,6 +80,30 @@ export default function ImportData() {
           'Descripción': 'Tubo PVC estándar',
         },
       ],
+      clothing: [
+        {
+          'Nombre': 'Camiseta Polo Azul',
+          'Marca': 'Uniforme Fesa',
+          'Categoría': 'Ropa',
+          'Cantidad': 20,
+          'Unidad': 'unidad',
+          'Stock Mínimo': 5,
+          'Ubicación': 'Almacén D',
+          'Descripción': 'Camiseta polo talla M',
+        },
+      ],
+      epp: [
+        {
+          'Nombre': 'Casco de Seguridad',
+          'Marca': '3M',
+          'Categoría': 'EPP',
+          'Cantidad': 15,
+          'Unidad': 'unidad',
+          'Stock Mínimo': 3,
+          'Ubicación': 'Almacén E',
+          'Descripción': 'Casco de seguridad certificado',
+        },
+      ],
       vehicle: [
         {
           'Placa': 'ABC-1234',
@@ -136,14 +160,16 @@ export default function ImportData() {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i] as any;
         try {
-          if (importType === 'equipment' || importType === 'tool' || importType === 'material') {
+          if (importType === 'equipment' || importType === 'tool' || importType === 'material' || importType === 'clothing' || importType === 'epp') {
             // Map Spanish categories to English
             const categoryMap: Record<string, string> = {
               'Equipo': 'equipment',
               'Herramienta': 'tool',
               'Material': 'material',
+              'Ropa': 'clothing',
+              'EPP': 'epp',
             };
-            const category = row['Categoría'] || 'equipment';
+            const category = row['Categoría'] || importType;
             const mappedCategory = categoryMap[category] || category.toLowerCase();
 
             await supabase.from('inventory_items').insert({
@@ -206,6 +232,8 @@ export default function ImportData() {
           <TabsTrigger value="equipment">Equipos</TabsTrigger>
           <TabsTrigger value="tool">Herramientas</TabsTrigger>
           <TabsTrigger value="material">Materiales</TabsTrigger>
+          <TabsTrigger value="clothing">Ropa</TabsTrigger>
+          <TabsTrigger value="epp">EPP</TabsTrigger>
           <TabsTrigger value="vehicle">Vehículos</TabsTrigger>
         </TabsList>
 
@@ -404,6 +432,128 @@ export default function ImportData() {
               >
                 <Download className="h-4 w-4 mr-2" />
                 Descargar Plantilla de Materiales
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Clothing Import */}
+        <TabsContent value="clothing" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Importar Ropa</CardTitle>
+              <CardDescription>
+                Descarga la plantilla, complétala con tus datos y cárgala aquí
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-4">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                  id="file-input-clothing"
+                />
+                <Button
+                  onClick={() => document.getElementById('file-input-clothing')?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? 'Cargando...' : 'Seleccionar Archivo'}
+                </Button>
+              </div>
+
+              {results && (
+                <Alert className="border-green-200 bg-green-50">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-900">
+                    <p className="font-semibold mb-2">
+                      {results.imported}/{results.total} registros importados
+                    </p>
+                    {results.errors > 0 && (
+                      <div className="text-sm">
+                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {results.errorList.map((error: string, i: number) => (
+                            <li key={i}>{error}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                variant="outline"
+                onClick={() => downloadTemplate('clothing')}
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar Plantilla de Ropa
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* EPP Import */}
+        <TabsContent value="epp" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Importar EPP</CardTitle>
+              <CardDescription>
+                Descarga la plantilla, complétala con tus datos y cárgala aquí
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-4">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                  id="file-input-epp"
+                />
+                <Button
+                  onClick={() => document.getElementById('file-input-epp')?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? 'Cargando...' : 'Seleccionar Archivo'}
+                </Button>
+              </div>
+
+              {results && (
+                <Alert className="border-green-200 bg-green-50">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-900">
+                    <p className="font-semibold mb-2">
+                      {results.imported}/{results.total} registros importados
+                    </p>
+                    {results.errors > 0 && (
+                      <div className="text-sm">
+                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {results.errorList.map((error: string, i: number) => (
+                            <li key={i}>{error}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                variant="outline"
+                onClick={() => downloadTemplate('epp')}
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar Plantilla de EPP
               </Button>
             </CardContent>
           </Card>

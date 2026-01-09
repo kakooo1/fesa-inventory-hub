@@ -62,7 +62,12 @@ export const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
       setCantidad(initialData?.cantidad || 1);
       setExistencias(initialData?.existencias || []);
     } else {
-      setMode('select');
+      // Si no hay equipos existentes, ir directo a crear
+      if (existingEquipments.length === 0) {
+        setMode('create');
+      } else {
+        setMode('select');
+      }
       setSelectedEquipmentId('');
       setMarca("");
       setCapacidad("");
@@ -70,7 +75,7 @@ export const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
       setCantidad(1);
       setExistencias([]);
     }
-  }, [initialData, isEdit, open]);
+  }, [initialData, isEdit, open, existingEquipments.length]);
 
   const handleSubmitForm = () => {
     console.log('handleSubmitForm ejecutado', { mode, selectedEquipmentId, marca, capacidad, modelo, cantidad });
@@ -90,9 +95,14 @@ export const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
       onSubmit(equipmentData, 'update');
       console.log('onSubmit ejecutado, cerrando diálogo');
       onOpenChange(false);
-    } else if (mode === 'create' && (marca.trim() || capacidad.trim() || modelo.trim())) {
+    } else if (mode === 'create' || (mode === 'select' && !selectedEquipmentId && (marca.trim() || capacidad.trim() || modelo.trim()))) {
+      // Si está en modo select pero no seleccionó equipo, cambiar a crear
       console.log('Modo create - creando nuevo equipo');
       const equipmentName = `${marca} ${capacidad} ${modelo}`.trim();
+      if (!equipmentName) {
+        console.log('Nombre del equipo está vacío');
+        return;
+      }
       const equipmentData = {
         name: equipmentName,
         marca,
@@ -123,6 +133,7 @@ export const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
     } else {
       console.log('No se cumplió ninguna condición - validación fallida');
       console.log('Valores actuales:', { mode, selectedEquipmentId, marca, capacidad, modelo, isEdit });
+      alert('Por favor completa los campos requeridos');
     }
   };
 

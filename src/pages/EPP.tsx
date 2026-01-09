@@ -115,6 +115,34 @@ export default function EPP() {
         return <StatusBadge status="success">Disponible</StatusBadge>;
       }
     },
+    { 
+      key: 'actions', 
+      header: 'Acciones',
+      className: 'text-right',
+      render: (item) => (
+        <div className="flex justify-end gap-2">
+          {canEdit && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )
+    },
   ];
 
   if (isLoading || !userProfile) {
