@@ -77,14 +77,20 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
   const maxQuantity = selectedItem?.available_quantity || 1;
 
   const onSubmit = (data: FormData) => {
-    createLoan.mutate({
-      item_id: data.item_id,
-      quantity: data.quantity,
-      borrowed_by: data.borrowed_by,
-      expected_return: data.expected_return,
-      notes: data.notes,
-    });
-    onOpenChange(false);
+    createLoan.mutate(
+      {
+        item_id: data.item_id,
+        quantity: data.quantity,
+        borrowed_by: data.borrowed_by,
+        expected_return: data.expected_return,
+        notes: data.notes,
+      },
+      {
+        onSuccess: () => {
+          onOpenChange(false);
+        },
+      }
+    );
   };
 
   return (

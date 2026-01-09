@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import Materials from "./pages/Materials";
 import Tools from "./pages/Tools";
 import Equipments from "./pages/Equipments";
+import Repairs from "./pages/Repairs";
+import ImportData from "./pages/ImportData";
 import Loans from "./pages/Loans";
 import MaterialRequests from "./pages/MaterialRequests";
 import Vehicles from "./pages/Vehicles";
@@ -96,6 +98,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician', 'bodeguero']}>
             <Equipments />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/repairs" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'supervisor', 'technician']}>
+            <Repairs />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/import-data" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <ImportData />
           </ProtectedRoute>
         } 
       />

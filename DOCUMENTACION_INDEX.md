@@ -1,6 +1,60 @@
-# 📚 ÍNDICE DE DOCUMENTACIÓN - Sistema de Solicitudes de Materiales
+# 📚 ÍNDICE DE DOCUMENTACIÓN COMPLETO
 
-## 🎯 COMIENZA AQUÍ
+## 🎯 DOCUMENTACIÓN ACTUALIZADA - Enero 2026
+
+Este sistema ahora incluye:
+- ✅ Sistema de Reparación de Equipos
+- ✅ Sistema de Importación de Datos desde Excel
+- ✅ Control de acceso por roles avanzado
+- ✅ Documentación completa
+
+---
+
+## 📖 NUEVA DOCUMENTACIÓN - Sistema de Reparaciones e Importación
+
+### 1. **INSTRUCCIONES_FINALES.md** ⭐ COMIENZA AQUÍ
+**Para**: Administradores/Implementadores  
+- Pasos de instalación paso a paso
+- Actualización de base de datos
+- Verificación de funcionalidades
+- Testing completo
+- Troubleshooting
+
+### 2. **GUIA_RAPIDA.md** ⚡ REFERENCIA DIARIA
+**Para**: Todos los usuarios  
+- Instrucciones de 3-5 pasos por rol
+- Restricciones y permisos
+- Valores permitidos
+- Errores comunes y soluciones
+
+### 3. **GUIA_IMPORTACION_DATOS.md** 📊 GUÍA DETALLADA
+**Para**: Administradores  
+- Orden correcto de importación
+- Estructura de plantillas
+- Pasos detallados
+- Validaciones completas
+- Ejemplos prácticos
+- Solución avanzada de problemas
+
+### 4. **IMPLEMENTACION_COMPLETA.md** 🔧 DETALLES TÉCNICOS
+**Para**: Desarrolladores/Técnicos  
+- Arquitectura técnica
+- Estructura de archivos
+- Políticas RLS
+- Flujos de trabajo
+- Casos de uso
+- Limitaciones
+
+### 5. **RESUMEN_REPARACIONES_IMPORTACION.md** 📋 RESUMEN EJECUTIVO
+**Para**: Gerentes/Supervisores  
+- Resumen de cambios
+- Control de acceso
+- Características principales
+- Checklist de verificación
+
+---
+
+## 🎯 DOCUMENTACIÓN ORIGINAL - Sistema de Solicitudes
 
 Si es tu **primera vez**, abre en este orden:
 

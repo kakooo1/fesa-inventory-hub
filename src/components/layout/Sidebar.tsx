@@ -12,7 +12,9 @@ import {
   LogOut,
   FileText,
   Monitor,
-  Bell
+  Bell,
+  Hammer,
+  Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,9 +26,11 @@ const navigation = [
   { name: 'Materiales', href: '/materials', icon: Package, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Herramientas', href: '/tools', icon: Wrench, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Equipos', href: '/equipments', icon: Monitor, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
+  { name: 'Reparaciones', href: '/repairs', icon: Hammer, rolesAllowed: ['admin', 'supervisor', 'technician'] },
   { name: 'Préstamos', href: '/loans', icon: HandCoins, rolesAllowed: ['admin', 'technician', 'bodeguero'] },
   { name: 'Solicitudes', href: '/material-requests', icon: FileText, rolesAllowed: ['admin', 'supervisor', 'bodeguero'] },
   { name: 'Vehículos', href: '/vehicles', icon: Truck, rolesAllowed: ['admin', 'technician', 'bodeguero', 'supervisor'] },
+  { name: 'Importar Datos', href: '/import-data', icon: Download, adminOnly: true },
   { name: 'Notificaciones', href: '/notifications', icon: Bell, rolesAllowed: ['admin', 'supervisor', 'technician', 'bodeguero'] },
   { name: 'Usuarios', href: '/users', icon: Users, adminOnly: true },
 ];
