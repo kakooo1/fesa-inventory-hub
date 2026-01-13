@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Upload, Download, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -13,30 +14,11 @@ import { toast } from 'sonner';
 
 export default function ImportData() {
   const { userProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [importType, setImportType] = useState('equipment');
-  
-  // Guardar el progreso en localStorage cuando cambien los resultados
-  useEffect(() => {
-    if (results) {
-      localStorage.setItem('importProgress', JSON.stringify({ results, importType, timestamp: Date.now() }));
-    }
-  }, [results, importType]);
-  
-  // Recuperar el progreso guardado al cargar el componente
-  useEffect(() => {
-    const savedProgress = localStorage.getItem('importProgress');
-    if (savedProgress) {
-      try {
-        const { results: savedResults, importType: savedType } = JSON.parse(savedProgress);
-        setResults(savedResults);
-        setImportType(savedType);
-      } catch (error) {
-        console.error('Error al recuperar progreso guardado:', error);
-      }
-    }
-  }, []);
+  const [resultsByType, setResultsByType] = useState<Record<string, any>>({});
 
   const isAdmin = userProfile?.role === 'admin';
 
@@ -207,17 +189,28 @@ export default function ImportData() {
 
           if (importType === 'equipment' || importType === 'tool' || importType === 'material' || importType === 'clothing' || importType === 'epp') {
             // Map Spanish categories to English
-            const categoryMap: Record<string, string> = {
+            const categoryMap: Record<string, 'equipment' | 'tool' | 'material' | 'clothing' | 'epp'> = {
               'Equipo': 'equipment',
               'Herramienta': 'tool',
               'Material': 'material',
               'Ropa': 'clothing',
               'EPP': 'epp',
+              // También mapear desde el tipo importType en inglés
+              'equipment': 'equipment',
+              'tool': 'tool',
+              'material': 'material',
+              'clothing': 'clothing',
+              'epp': 'epp',
             };
             
             const nombre = row['Nombre']?.toString().trim() || '';
             const cantidad = parseInt(row['Cantidad']?.toString() || '0') || 0;
-            const categoria = row['Categoría']?.toString().trim() || importType;
+            let categoria = row['Categoría']?.toString().trim() || '';
+            
+            // Si la categoría está vacía, usar el importType
+            if (!categoria) {
+              categoria = importType;
+            }
             
             // Validar campos requeridos
             if (!nombre) {
@@ -231,11 +224,11 @@ export default function ImportData() {
               continue;
             }
 
-            const mappedCategory = categoryMap[categoria] || categoria.toLowerCase();
+            const mappedCategory: 'equipment' | 'tool' | 'material' | 'clothing' | 'epp' = categoryMap[categoria] || (importType as 'equipment' | 'tool' | 'material' | 'clothing' | 'epp');
 
-            await supabase.from('inventory_items').insert({
+            const { error: itemError } = await supabase.from('inventory_items').insert({
               name: nombre,
-              category: mappedCategory,
+              category: mappedCategory as any,
               quantity: cantidad,
               available_quantity: cantidad,
               unit: row['Unidad']?.toString().trim() || 'unidad',
@@ -243,6 +236,10 @@ export default function ImportData() {
               location: row['Ubicación']?.toString().trim() || '',
               description: row['Descripción']?.toString().trim() || '',
             });
+            
+            if (itemError) {
+              throw itemError;
+            }
             imported++;
           } else if (importType === 'vehicle') {
             const placa = row['Placa']?.toString().trim() || '';
@@ -254,21 +251,38 @@ export default function ImportData() {
               continue;
             }
 
-            await supabase.from('vehicles').insert({
+            const vehicleData: any = {
               plate: placa,
               brand: row['Marca']?.toString().trim() || '',
               model: row['Modelo']?.toString().trim() || '',
               year: parseInt(row['Año']?.toString() || '') || new Date().getFullYear(),
               current_km: parseInt(row['KM Actual']?.toString() || '0') || 0,
               status: row['Estado']?.toString().trim() || 'active',
-              assigned_to: row['Asignado a']?.toString().trim() || null,
-              next_maintenance_km: parseInt(row['Próximo Mantenimiento KM']?.toString() || '') || null,
-            });
+            };
+
+            // Solo agregar assigned_to si tiene valor
+            const assignedTo = row['Asignado a']?.toString().trim();
+            if (assignedTo) {
+              vehicleData.assigned_to = assignedTo;
+            }
+
+            // Solo agregar next_maintenance_km si tiene valor válido
+            const nextMaint = parseInt(row['Próximo Mantenimiento KM']?.toString() || '');
+            if (!isNaN(nextMaint)) {
+              vehicleData.next_maintenance_km = nextMaint;
+            }
+
+            const { error: vehicleError } = await supabase.from('vehicles').insert(vehicleData);
+            
+            if (vehicleError) {
+              throw vehicleError;
+            }
             imported++;
           }
         } catch (error: any) {
           errors++;
-          errorList.push(`Fila ${i + 2}: ${error.message}`);
+          console.error(`Error en fila ${i + 2}:`, error);
+          errorList.push(`Fila ${i + 2}: ${error.message || JSON.stringify(error)}`);
         }
       }
 
@@ -278,6 +292,17 @@ export default function ImportData() {
         total: rows.length,
         errorList: errorList.slice(0, 10), // Show first 10 errors
       });
+
+      // Esperar un poco para asegurar que los datos están en la BD
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Invalidar y refetch del caché para que las páginas se actualicen con los nuevos datos
+      await queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
+      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      
+      // Forzar refetch inmediato
+      await queryClient.refetchQueries({ queryKey: ['inventory-items'] });
+      await queryClient.refetchQueries({ queryKey: ['vehicles'] });
 
       toast.success(`${imported} registros importados exitosamente`);
       if (errors > 0) {
@@ -291,16 +316,27 @@ export default function ImportData() {
   };
 
   const handleTabChange = (value: string) => {
+    // Guardar resultados de la pestaña anterior
+    if (results) {
+      setResultsByType(prev => ({
+        ...prev,
+        [importType]: results
+      }));
+    }
+    
+    // Cambiar tipo de importación
     setImportType(value);
-    // Limpiar resultados al cambiar de pestaña para mostrar interfaz limpia
-    setResults(null);
-    // Limpiar localStorage del progreso anterior
-    localStorage.removeItem('importProgress');
+    
+    // Restaurar resultados de la nueva pestaña
+    setResults(resultsByType[value] || null);
   };
 
   const clearProgress = () => {
     setResults(null);
-    localStorage.removeItem('importProgress');
+    setResultsByType(prev => ({
+      ...prev,
+      [importType]: null
+    }));
     toast.success('Progreso limpiado');
   };
 
