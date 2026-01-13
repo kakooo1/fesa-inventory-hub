@@ -115,9 +115,10 @@ export default function ImportData() {
           'Modelo': 'Hilux',
           'Año': 2023,
           'KM Actual': 5000,
-          'Estado': 'active',
+          'Estado': 'ok',
           'Asignado a': 'Juan Pérez',
           'Próximo Mantenimiento KM': 10000,
+          'Fecha Revisión Técnica': '2025-12-15',
         },
       ],
     };
@@ -175,6 +176,29 @@ export default function ImportData() {
       let imported = 0;
       let errors = 0;
       const errorList = [];
+
+      // Función para convertir número serial de Excel a fecha ISO
+      const excelSerialToDate = (serial: number | string): string => {
+        // Si es un string, convertir a número
+        const numSerial = typeof serial === 'string' ? parseFloat(serial) : serial;
+        
+        // Si no es un número válido, devolver la string original
+        if (isNaN(numSerial)) {
+          return serial.toString();
+        }
+
+        // Excel usa como base el 1 de enero de 1900
+        // Restar 1 porque Excel cuenta el 29 de febrero de 1900 (que no existió)
+        const baseDate = new Date(1899, 11, 30); // 30 de diciembre de 1899
+        const resultDate = new Date(baseDate.getTime() + numSerial * 24 * 60 * 60 * 1000);
+        
+        // Formatear como YYYY-MM-DD
+        const year = resultDate.getFullYear();
+        const month = String(resultDate.getMonth() + 1).padStart(2, '0');
+        const day = String(resultDate.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+      };
 
       for (let i = 0; i < rows.length; i++) {
         const rawRow = rows[i] as any;
@@ -257,7 +281,7 @@ export default function ImportData() {
               model: row['Modelo']?.toString().trim() || '',
               year: parseInt(row['Año']?.toString() || '') || new Date().getFullYear(),
               current_km: parseInt(row['KM Actual']?.toString() || '0') || 0,
-              status: row['Estado']?.toString().trim() || 'active',
+              status: (row['Estado']?.toString().trim() || 'ok').toLowerCase(),
             };
 
             // Solo agregar assigned_to si tiene valor
@@ -270,6 +294,19 @@ export default function ImportData() {
             const nextMaint = parseInt(row['Próximo Mantenimiento KM']?.toString() || '');
             if (!isNaN(nextMaint)) {
               vehicleData.next_maintenance_km = nextMaint;
+            }
+
+            // Solo agregar technical_review_date si tiene valor
+            let technicalReviewDate = row['Fecha Revisión Técnica']?.toString().trim() || 
+                                       row['Fecha Revision Tecnica']?.toString().trim() || 
+                                       row['Fecha revisión técnica']?.toString().trim();
+            if (technicalReviewDate) {
+              // Convertir de número serial de Excel si es necesario
+              if (/^\d+$/.test(technicalReviewDate)) {
+                technicalReviewDate = excelSerialToDate(technicalReviewDate);
+              }
+              vehicleData.technical_review_date = technicalReviewDate;
+              console.log('Fecha revisión técnica cargada:', technicalReviewDate);
             }
 
             const { error: vehicleError } = await supabase.from('vehicles').insert(vehicleData);

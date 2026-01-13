@@ -30,6 +30,7 @@ const formSchema = z.object({
   date: z.string().min(1, 'La fecha es requerida'),
   cost: z.coerce.number().min(0, 'El costo debe ser 0 o más'),
   performed_by: z.string().min(1, 'El responsable es requerido').max(100),
+  next_maintenance_km: z.coerce.number().min(0, 'El kilometraje debe ser 0 o más').optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -52,6 +53,7 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
       date: format(new Date(), 'yyyy-MM-dd'),
       cost: 0,
       performed_by: '',
+      next_maintenance_km: vehicle?.next_maintenance_km || 0,
     },
   });
 
@@ -64,6 +66,7 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
         date: format(new Date(), 'yyyy-MM-dd'),
         cost: 0,
         performed_by: '',
+        next_maintenance_km: vehicle.next_maintenance_km || 0,
       });
     }
   }, [open, vehicle, form]);
@@ -79,6 +82,7 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
       date: data.date,
       cost: data.cost,
       performed_by: data.performed_by,
+      next_maintenance_km: data.next_maintenance_km || undefined,
     });
     onOpenChange(false);
   };
@@ -169,6 +173,24 @@ export function MaintenanceFormDialog({ open, onOpenChange, vehicle }: Maintenan
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="next_maintenance_km"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Próxima mantención (km)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="Km para la próxima mantención"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

@@ -26,7 +26,7 @@ export default function SupervisorDashboard() {
   const activeLoans = mySupervisorLoans.filter(l => !l.returned_at);
   const returnedLoans = mySupervisorLoans.filter(l => l.returned_at);
   const overdueLoans = activeLoans.filter(l => new Date(l.expected_return) < new Date());
-  const activeVehicles = mySupervisorVehicles.filter(v => v.status === 'active');
+  const activeVehicles = mySupervisorVehicles.filter(v => v.status === 'ok');
 
   const isLoading = loansLoading || vehiclesLoading;
 

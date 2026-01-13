@@ -37,10 +37,11 @@ export interface Vehicle {
   model: string;
   year: number;
   current_km: number;
-  status: 'active' | 'maintenance' | 'inactive';
+  status: 'ok' | 'maintenance' | 'inactive';
   assigned_to: string | null;
   last_maintenance: string | null;
   next_maintenance_km: number | null;
+  technical_review_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +56,7 @@ export interface Maintenance {
   cost: number;
   performed_by: string;
   created_by: string | null;
+  next_maintenance_km?: number;
 }
 
 export interface Profile {
@@ -388,20 +390,30 @@ export function useCreateMaintenance() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (maintenance: Omit<Maintenance, 'id' | 'created_by'>) => {
+      // Separar next_maintenance_km para no enviarlo a la tabla maintenances
+      const { next_maintenance_km, ...maintenanceData } = maintenance;
+      
       const { data, error } = await supabase
         .from('maintenances')
-        .insert(maintenance)
+        .insert(maintenanceData)
         .select()
         .single();
       if (error) throw error;
 
       // Update vehicle km and last maintenance
+      const updateData: any = { 
+        current_km: maintenance.km_at_maintenance,
+        last_maintenance: maintenance.date,
+      };
+      
+      // Si se proporcionó next_maintenance_km, actualizar también eso
+      if (next_maintenance_km !== undefined) {
+        updateData.next_maintenance_km = next_maintenance_km;
+      }
+
       await supabase
         .from('vehicles')
-        .update({ 
-          current_km: maintenance.km_at_maintenance,
-          last_maintenance: maintenance.date,
-        })
+        .update(updateData)
         .eq('id', maintenance.vehicle_id);
 
       return data;

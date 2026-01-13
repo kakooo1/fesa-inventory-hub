@@ -20,7 +20,7 @@ export default function Dashboard() {
   const lowStockItems = items.filter(i => i.available_quantity <= i.min_stock);
   const materials = items.filter(i => i.category === 'material');
   const tools = items.filter(i => i.category === 'tool');
-  const activeVehicles = vehicles.filter(v => v.status === 'active');
+  const activeVehicles = vehicles.filter(v => v.status === 'ok');
 
   const isLoading = itemsLoading || loansLoading || vehiclesLoading;
 

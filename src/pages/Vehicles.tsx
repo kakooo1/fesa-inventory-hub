@@ -187,14 +187,39 @@ export default function Vehicles() {
       }
     },
     { 
+      key: 'technicalReview', 
+      header: 'Revisión Técnica',
+      render: (v) => {
+        if (!v.technical_review_date) return '-';
+        const reviewDate = new Date(v.technical_review_date);
+        const today = new Date();
+        const daysUntilExpiry = Math.ceil((reviewDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        let className = '';
+        if (daysUntilExpiry < 0) {
+          className = 'text-destructive font-medium';
+        } else if (daysUntilExpiry <= 30) {
+          className = 'text-warning font-medium';
+        }
+        
+        return (
+          <div className={className}>
+            {reviewDate.toLocaleDateString('es-CL')}
+            {daysUntilExpiry < 0 && ' (Vencida)'}
+            {daysUntilExpiry >= 0 && daysUntilExpiry <= 30 && ` (${daysUntilExpiry}d)`}
+          </div>
+        );
+      }
+    },
+    { 
       key: 'status', 
       header: 'Estado',
       render: (v) => (
         <StatusBadge status={
-          v.status === 'active' ? 'success' : 
+          v.status === 'ok' ? 'success' : 
           v.status === 'maintenance' ? 'warning' : 'neutral'
         }>
-          {v.status === 'active' ? 'Activo' : v.status === 'maintenance' ? 'En mantención' : 'Inactivo'}
+          {v.status === 'ok' ? 'OK' : v.status === 'maintenance' ? 'En mantención' : 'Inactivo'}
         </StatusBadge>
       )
     },

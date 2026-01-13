@@ -33,9 +33,10 @@ const formSchema = z.object({
   model: z.string().min(1, 'El modelo es requerido').max(50),
   year: z.coerce.number().min(1990).max(new Date().getFullYear() + 1),
   current_km: z.coerce.number().min(0, 'El kilometraje debe ser 0 o más'),
-  status: z.enum(['active', 'maintenance', 'inactive']),
+  status: z.enum(['ok', 'maintenance', 'inactive']),
   assigned_to: z.string().max(100).optional(),
   next_maintenance_km: z.coerce.number().min(0).optional(),
+  technical_review_date: z.string().optional().nullable(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -60,9 +61,10 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
       model: '',
       year: new Date().getFullYear(),
       current_km: 0,
-      status: 'active',
+      status: 'ok',
       assigned_to: '',
       next_maintenance_km: 0,
+      technical_review_date: '',
     },
   });
 
@@ -77,6 +79,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
         status: vehicle.status,
         assigned_to: vehicle.assigned_to || '',
         next_maintenance_km: vehicle.next_maintenance_km || 0,
+        technical_review_date: vehicle.technical_review_date || '',
       });
     } else {
       form.reset({
@@ -85,9 +88,10 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
         model: '',
         year: new Date().getFullYear(),
         current_km: 0,
-        status: 'active',
+        status: 'ok',
         assigned_to: '',
         next_maintenance_km: 0,
+        technical_review_date: '',
       });
     }
   }, [vehicle, form, open]);
@@ -102,6 +106,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
       status: data.status,
       assigned_to: data.assigned_to || null,
       next_maintenance_km: data.next_maintenance_km || null,
+      technical_review_date: data.technical_review_date || null,
       last_maintenance: null,
     };
 
@@ -213,7 +218,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="active">Activo</SelectItem>
+                        <SelectItem value="ok">OK</SelectItem>
                         <SelectItem value="maintenance">En mantención</SelectItem>
                         <SelectItem value="inactive">Inactivo</SelectItem>
                       </SelectContent>
@@ -237,6 +242,24 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="technical_review_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fecha Revisión Técnica</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="date" 
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
