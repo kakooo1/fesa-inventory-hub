@@ -175,13 +175,36 @@ export default function ImportData() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(worksheet);
 
+      // Función para normalizar las claves (eliminar espacios, acentos inconsistentes)
+      const normalizeKey = (key: string): string => {
+        return key.trim();
+      };
+
+      // Función para normalizar filas
+      const normalizeRow = (row: any): Record<string, any> => {
+        const normalized: Record<string, any> = {};
+        for (const [key, value] of Object.entries(row)) {
+          const normalizedKey = normalizeKey(key as string);
+          normalized[normalizedKey] = value;
+        }
+        return normalized;
+      };
+
       let imported = 0;
       let errors = 0;
       const errorList = [];
 
       for (let i = 0; i < rows.length; i++) {
-        const row = rows[i] as any;
+        const rawRow = rows[i] as any;
+        const row = normalizeRow(rawRow);
+        
         try {
+          // Validar que la fila no esté vacía (al menos un campo debe tener valor)
+          const hasContent = Object.values(row).some(v => v !== undefined && v !== null && v !== '');
+          if (!hasContent) {
+            continue; // Saltar filas vacías
+          }
+
           if (importType === 'equipment' || importType === 'tool' || importType === 'material' || importType === 'clothing' || importType === 'epp') {
             // Map Spanish categories to English
             const categoryMap: Record<string, string> = {
@@ -191,30 +214,55 @@ export default function ImportData() {
               'Ropa': 'clothing',
               'EPP': 'epp',
             };
-            const category = row['Categoría'] || importType;
-            const mappedCategory = categoryMap[category] || category.toLowerCase();
+            
+            const nombre = row['Nombre']?.toString().trim() || '';
+            const cantidad = parseInt(row['Cantidad']?.toString() || '0') || 0;
+            const categoria = row['Categoría']?.toString().trim() || importType;
+            
+            // Validar campos requeridos
+            if (!nombre) {
+              errors++;
+              errorList.push(`Fila ${i + 2}: El campo "Nombre" es requerido`);
+              continue;
+            }
+            if (cantidad < 0) {
+              errors++;
+              errorList.push(`Fila ${i + 2}: La cantidad no puede ser negativa`);
+              continue;
+            }
+
+            const mappedCategory = categoryMap[categoria] || categoria.toLowerCase();
 
             await supabase.from('inventory_items').insert({
-              name: row['Nombre'] || '',
+              name: nombre,
               category: mappedCategory,
-              quantity: parseInt(row['Cantidad']) || 0,
-              available_quantity: parseInt(row['Cantidad']) || 0,
-              unit: row['Unidad'] || 'unidad',
-              min_stock: parseInt(row['Stock Mínimo']) || 1,
-              location: row['Ubicación'] || '',
-              description: row['Descripción'] || '',
+              quantity: cantidad,
+              available_quantity: cantidad,
+              unit: row['Unidad']?.toString().trim() || 'unidad',
+              min_stock: parseInt(row['Stock Mínimo']?.toString() || '1') || 1,
+              location: row['Ubicación']?.toString().trim() || '',
+              description: row['Descripción']?.toString().trim() || '',
             });
             imported++;
           } else if (importType === 'vehicle') {
+            const placa = row['Placa']?.toString().trim() || '';
+            
+            // Validar campos requeridos para vehículos
+            if (!placa) {
+              errors++;
+              errorList.push(`Fila ${i + 2}: El campo "Placa" es requerido`);
+              continue;
+            }
+
             await supabase.from('vehicles').insert({
-              plate: row['Placa'] || '',
-              brand: row['Marca'] || '',
-              model: row['Modelo'] || '',
-              year: parseInt(row['Año']) || new Date().getFullYear(),
-              current_km: parseInt(row['KM Actual']) || 0,
-              status: row['Estado'] || 'active',
-              assigned_to: row['Asignado a'] || null,
-              next_maintenance_km: parseInt(row['Próximo Mantenimiento KM']) || null,
+              plate: placa,
+              brand: row['Marca']?.toString().trim() || '',
+              model: row['Modelo']?.toString().trim() || '',
+              year: parseInt(row['Año']?.toString() || '') || new Date().getFullYear(),
+              current_km: parseInt(row['KM Actual']?.toString() || '0') || 0,
+              status: row['Estado']?.toString().trim() || 'active',
+              assigned_to: row['Asignado a']?.toString().trim() || null,
+              next_maintenance_km: parseInt(row['Próximo Mantenimiento KM']?.toString() || '') || null,
             });
             imported++;
           }
