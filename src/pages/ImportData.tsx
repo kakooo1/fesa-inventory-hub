@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Upload, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Upload, Download, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { ImportResults } from '@/components/inventory/ImportResults';
 import { toast } from 'sonner';
 
 export default function ImportData() {
@@ -15,6 +16,27 @@ export default function ImportData() {
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [importType, setImportType] = useState('equipment');
+  
+  // Guardar el progreso en localStorage cuando cambien los resultados
+  useEffect(() => {
+    if (results) {
+      localStorage.setItem('importProgress', JSON.stringify({ results, importType, timestamp: Date.now() }));
+    }
+  }, [results, importType]);
+  
+  // Recuperar el progreso guardado al cargar el componente
+  useEffect(() => {
+    const savedProgress = localStorage.getItem('importProgress');
+    if (savedProgress) {
+      try {
+        const { results: savedResults, importType: savedType } = JSON.parse(savedProgress);
+        setResults(savedResults);
+        setImportType(savedType);
+      } catch (error) {
+        console.error('Error al recuperar progreso guardado:', error);
+      }
+    }
+  }, []);
 
   const isAdmin = userProfile?.role === 'admin';
 
@@ -220,6 +242,20 @@ export default function ImportData() {
     }
   };
 
+  const handleTabChange = (value: string) => {
+    setImportType(value);
+    // Limpiar resultados al cambiar de pestaña para mostrar interfaz limpia
+    setResults(null);
+    // Limpiar localStorage del progreso anterior
+    localStorage.removeItem('importProgress');
+  };
+
+  const clearProgress = () => {
+    setResults(null);
+    localStorage.removeItem('importProgress');
+    toast.success('Progreso limpiado');
+  };
+
   return (
     <MainLayout>
       <PageHeader
@@ -227,7 +263,7 @@ export default function ImportData() {
         description="Carga datos en lote desde archivos Excel"
       />
 
-      <Tabs defaultValue="equipment" className="space-y-4" onValueChange={setImportType}>
+      <Tabs defaultValue="equipment" className="space-y-4" onValueChange={handleTabChange} value={importType}>
         <TabsList>
           <TabsTrigger value="equipment">Equipos</TabsTrigger>
           <TabsTrigger value="tool">Herramientas</TabsTrigger>
@@ -272,26 +308,7 @@ export default function ImportData() {
                 </div>
               </div>
 
-              {results && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-900">
-                    <p className="font-semibold mb-2">
-                      {results.imported}/{results.total} registros importados
-                    </p>
-                    {results.errors > 0 && (
-                      <div className="text-sm">
-                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {results.errorList.map((error: string, i: number) => (
-                            <li key={i}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
+              <ImportResults results={results} onClear={clearProgress} />
 
               <Button
                 variant="outline"
@@ -337,26 +354,7 @@ export default function ImportData() {
                 </label>
               </div>
 
-              {results && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-900">
-                    <p className="font-semibold mb-2">
-                      {results.imported}/{results.total} registros importados
-                    </p>
-                    {results.errors > 0 && (
-                      <div className="text-sm">
-                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {results.errorList.map((error: string, i: number) => (
-                            <li key={i}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
+              <ImportResults results={results} onClear={clearProgress} />
 
               <Button
                 variant="outline"
@@ -404,26 +402,7 @@ export default function ImportData() {
                 </div>
               </div>
 
-              {results && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-900">
-                    <p className="font-semibold mb-2">
-                      {results.imported}/{results.total} registros importados
-                    </p>
-                    {results.errors > 0 && (
-                      <div className="text-sm">
-                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {results.errorList.map((error: string, i: number) => (
-                            <li key={i}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
+              <ImportResults results={results} onClear={clearProgress} />
 
               <Button
                 variant="outline"
@@ -465,26 +444,7 @@ export default function ImportData() {
                 </Button>
               </div>
 
-              {results && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-900">
-                    <p className="font-semibold mb-2">
-                      {results.imported}/{results.total} registros importados
-                    </p>
-                    {results.errors > 0 && (
-                      <div className="text-sm">
-                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {results.errorList.map((error: string, i: number) => (
-                            <li key={i}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
+              <ImportResults results={results} onClear={clearProgress} />
 
               <Button
                 variant="outline"
@@ -526,26 +486,7 @@ export default function ImportData() {
                 </Button>
               </div>
 
-              {results && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-900">
-                    <p className="font-semibold mb-2">
-                      {results.imported}/{results.total} registros importados
-                    </p>
-                    {results.errors > 0 && (
-                      <div className="text-sm">
-                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {results.errorList.map((error: string, i: number) => (
-                            <li key={i}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
+              <ImportResults results={results} onClear={clearProgress} />
 
               <Button
                 variant="outline"
@@ -593,26 +534,7 @@ export default function ImportData() {
                 </div>
               </div>
 
-              {results && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-900">
-                    <p className="font-semibold mb-2">
-                      {results.imported}/{results.total} registros importados
-                    </p>
-                    {results.errors > 0 && (
-                      <div className="text-sm">
-                        <p className="font-semibold text-orange-600 mb-2">{results.errors} errores:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {results.errorList.map((error: string, i: number) => (
-                            <li key={i}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
+              <ImportResults results={results} onClear={clearProgress} />
 
               <Button
                 variant="outline"
