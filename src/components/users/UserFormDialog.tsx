@@ -100,12 +100,14 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     try {
       if (!user) return;
 
+      // Update profile first
       await updateProfile.mutateAsync({
         userId: user.user_id,
         name: data.name,
         active: data.active,
       });
 
+      // Update role if changed
       if (data.role !== user.role) {
         await updateRole.mutateAsync({
           userId: user.user_id,
@@ -113,9 +115,19 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
         });
       }
 
+      toast({
+        title: "Usuario actualizado",
+        description: "Los cambios se guardaron correctamente",
+      });
+      
       onOpenChange(false);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error al actualizar",
+        description: error.message || "No se pudieron guardar los cambios",
+        variant: "destructive",
+      });
     }
   };
 
@@ -128,9 +140,20 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
         role: data.role,
       });
 
+      toast({
+        title: "Usuario creado",
+        description: "El usuario se creó correctamente",
+      });
+      
+      createForm.reset();
       onOpenChange(false);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Error al crear usuario",
+        description: error.message || "No se pudo crear el usuario",
+        variant: "destructive",
+      });
     }
   };
 
