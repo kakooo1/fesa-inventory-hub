@@ -12,6 +12,21 @@
 -- Si tienes datos importantes, haz un backup antes de ejecutar este script.
 
 -- 1. Actualizar el enum de categorías en inventory_items para incluir equipment, clothing, epp
+-- Primero agregar los valores al enum si no existen
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'equipment' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'item_category')) THEN
+        ALTER TYPE item_category ADD VALUE 'equipment';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'clothing' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'item_category')) THEN
+        ALTER TYPE item_category ADD VALUE 'clothing';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'epp' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'item_category')) THEN
+        ALTER TYPE item_category ADD VALUE 'epp';
+    END IF;
+END $$;
+
+-- Actualizar el constraint también
 ALTER TABLE inventory_items 
 DROP CONSTRAINT IF EXISTS inventory_items_category_check;
 
@@ -20,6 +35,15 @@ ADD CONSTRAINT inventory_items_category_check
 CHECK (category IN ('material', 'tool', 'equipment', 'clothing', 'epp'));
 
 -- 2. Actualizar el enum de roles en user_roles para incluir bodeguero
+-- Primero intentar agregar el valor al enum si no existe
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'bodeguero' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'app_role')) THEN
+        ALTER TYPE app_role ADD VALUE 'bodeguero';
+    END IF;
+END $$;
+
+-- Actualizar el constraint también
 ALTER TABLE user_roles
 DROP CONSTRAINT IF EXISTS user_roles_role_check;
 

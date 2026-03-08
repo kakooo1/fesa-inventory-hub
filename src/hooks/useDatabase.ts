@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAdmin } from '@/integrations/supabase/admin';
 import { toast } from 'sonner';
 
 export interface InventoryItem {
@@ -555,8 +556,12 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ email, password, name, role }: { email: string; password: string; name: string; role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' }) => {
-      // 1. Create auth user with metadata
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      if (!supabaseAdmin) {
+        throw new Error('Admin client no está configurado. Agrega VITE_SUPABASE_SERVICE_ROLE_KEY al archivo .env');
+      }
+
+      // 1. Create auth user with metadata using admin client
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -573,8 +578,8 @@ export function useCreateUser() {
       // 2. Wait a moment for the trigger to create the profile
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 3. Update profile with correct name
-      const { error: profileError } = await supabase
+      // 3. Update profile with correct name using admin client
+      const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .update({
           name,
@@ -587,24 +592,19 @@ export function useCreateUser() {
         // Don't throw here, profile might not exist yet
       }
 
-      // 4. Update or insert user role (in case trigger already created it)
-      const { error: roleError } = await supabase
+      // 4. Insert user role using admin client
+      const { error: roleError } = await supabaseAdmin
         .from('user_roles')
         .upsert({
           user_id: userId,
           role,
         }, {
-          onConflict: 'user_id,role',
+          onConflict: 'user_id',
         });
 
-      // If upsert failed, try update
       if (roleError) {
-        const { error: updateError } = await supabase
-          .from('user_roles')
-          .update({ role })
-          .eq('user_id', userId);
-        
-        if (updateError) throw updateError;
+        console.error('Error inserting role:', roleError);
+        throw new Error('Error al asignar el rol: ' + roleError.message);
       }
 
       return authData.user;
