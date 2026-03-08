@@ -1,0 +1,297 @@
+# INSTRUCCIONES PARA ARREGLAR ERRORES DE SUPABASE
+
+## Paso 1: Ejecuta este SQL en el SQL Editor de Supabase
+
+```sql
+-- Ejecuta TODOS estos comandos en orden en el SQL Editor de Supabase
+
+-- 1. Actualizar enum de categorías (inventory_items)
+ALTER TABLE inventory_items 
+DROP CONSTRAINT IF EXISTS inventory_items_category_check;
+
+ALTER TABLE inventory_items
+ADD CONSTRAINT inventory_items_category_check 
+CHECK (category IN ('material', 'tool', 'equipment', 'clothing', 'epp'));
+
+-- 2. Actualizar enum de roles (user_roles)
+ALTER TABLE user_roles
+DROP CONSTRAINT IF EXISTS user_roles_role_check;
+
+ALTER TABLE user_roles
+ADD CONSTRAINT user_roles_role_check
+CHECK (role IN ('admin', 'supervisor', 'technician', 'bodeguero'));
+
+-- 3. Actualizar enum de status de vehículos (si 'active' debe ser 'ok')
+UPDATE vehicles SET status = 'ok' WHERE status = 'active';
+
+-- 4. Crear tabla material_requests si no existe
+CREATE TABLE IF NOT EXISTS material_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  request_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'dispatched', 'returned')),
+  approved_by UUID REFERENCES profiles(user_id),
+  approved_date TIMESTAMP WITH TIME ZONE,
+  rejected_by UUID REFERENCES profiles(user_id),
+  rejected_date TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  ready_for_pickup BOOLEAN DEFAULT FALSE,
+  marked_ready_by UUID REFERENCES profiles(user_id),
+  marked_ready_at TIMESTAMP WITH TIME ZONE,
+  picked_up_by UUID REFERENCES profiles(user_id),
+  picked_up_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Crear tabla material_request_items si no existe
+CREATE TABLE IF NOT EXISTS material_request_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES material_requests(id) ON DELETE CASCADE,
+  material_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+  quantity_requested INTEGER NOT NULL CHECK (quantity_requested > 0),
+  quantity_approved INTEGER,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6. Crear tabla stock_history si no existe
+CREATE TABLE IF NOT EXISTS stock_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  material_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+  quantity_change INTEGER NOT NULL,
+  previous_quantity INTEGER NOT NULL,
+  new_quantity INTEGER NOT NULL,
+  change_type TEXT NOT NULL CHECK (change_type IN ('adjustment', 'loan', 'return', 'request_approved', 'request_rejected')),
+  changed_by UUID REFERENCES profiles(user_id),
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7. Crear tabla notifications si no existe
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient_role TEXT NOT NULL CHECK (recipient_role IN ('admin', 'supervisor', 'technician', 'bodeguero')),
+  recipient_id UUID REFERENCES profiles(user_id),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8. Crear tabla equipment_repairs si no existe
+CREATE TABLE IF NOT EXISTS equipment_repairs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  equipment_name TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('interno', 'externo')),
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'ingresado' CHECK (status IN ('ingresado', 'en_reparacion', 'reparado', 'no_reparable')),
+  entry_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  estimated_repair_date TIMESTAMP WITH TIME ZONE,
+  completion_date TIMESTAMP WITH TIME ZONE,
+  technician_assigned_to UUID REFERENCES profiles(user_id),
+  created_by UUID NOT NULL REFERENCES profiles(user_id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 9. Crear índices
+CREATE INDEX IF NOT EXISTS idx_material_requests_requester ON material_requests(requester_id);
+CREATE INDEX IF NOT EXISTS idx_material_requests_status ON material_requests(status);
+CREATE INDEX IF NOT EXISTS idx_material_request_items_request ON material_request_items(request_id);
+CREATE INDEX IF NOT EXISTS idx_stock_history_material ON stock_history(material_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_role, recipient_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_repairs_technician ON equipment_repairs(technician_assigned_to);
+CREATE INDEX IF NOT EXISTS idx_equipment_repairs_status ON equipment_repairs(status);
+
+-- 10. Crear triggers para updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+DROP TRIGGER IF EXISTS update_material_requests_updated_at ON material_requests;
+CREATE TRIGGER update_material_requests_updated_at BEFORE UPDATE ON material_requests
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_equipment_repairs_updated_at ON equipment_repairs;
+CREATE TRIGGER update_equipment_repairs_updated_at BEFORE UPDATE ON equipment_repairs
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 11. Habilitar RLS
+ALTER TABLE material_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE material_request_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE equipment_repairs ENABLE ROW LEVEL SECURITY;
+
+-- 12. Políticas RLS para material_requests
+DROP POLICY IF EXISTS "Users can view requests" ON material_requests;
+CREATE POLICY "Users can view requests" ON material_requests
+  FOR SELECT USING (
+    auth.uid() IN (SELECT user_id FROM profiles) OR
+    requester_id = auth.uid() OR
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+  );
+
+DROP POLICY IF EXISTS "Users can create requests" ON material_requests;
+CREATE POLICY "Users can create requests" ON material_requests
+  FOR INSERT WITH CHECK (
+    requester_id = auth.uid()
+  );
+
+DROP POLICY IF EXISTS "Admins can update requests" ON material_requests;
+CREATE POLICY "Admins can update requests" ON material_requests
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+  );
+
+-- 13. Políticas RLS para material_request_items
+DROP POLICY IF EXISTS "Users can view request items" ON material_request_items;
+CREATE POLICY "Users can view request items" ON material_request_items
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM material_requests mr 
+      WHERE mr.id = request_id 
+      AND (mr.requester_id = auth.uid() OR EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero')))
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can insert request items" ON material_request_items;
+CREATE POLICY "Users can insert request items" ON material_request_items
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM material_requests mr 
+      WHERE mr.id = request_id 
+      AND mr.requester_id = auth.uid()
+    )
+  );
+
+-- 14. Políticas RLS para stock_history
+DROP POLICY IF EXISTS "Users can view stock history" ON stock_history;
+CREATE POLICY "Users can view stock history" ON stock_history
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero', 'supervisor'))
+  );
+
+DROP POLICY IF EXISTS "Admins can insert stock history" ON stock_history;
+CREATE POLICY "Admins can insert stock history" ON stock_history
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+  );
+
+-- 15. Políticas RLS para notifications
+DROP POLICY IF EXISTS "Users can view their notifications" ON notifications;
+CREATE POLICY "Users can view their notifications" ON notifications
+  FOR SELECT USING (
+    recipient_id = auth.uid() OR
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = recipient_role)
+  );
+
+DROP POLICY IF EXISTS "System can create notifications" ON notifications;
+CREATE POLICY "System can create notifications" ON notifications
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can update their notifications" ON notifications;
+CREATE POLICY "Users can update their notifications" ON notifications
+  FOR UPDATE USING (
+    recipient_id = auth.uid() OR
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = recipient_role)
+  );
+
+-- 16. Políticas RLS para equipment_repairs
+DROP POLICY IF EXISTS "Users can view equipment repairs" ON equipment_repairs;
+CREATE POLICY "Users can view equipment repairs" ON equipment_repairs
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'supervisor', 'technician', 'bodeguero'))
+  );
+
+DROP POLICY IF EXISTS "Supervisors can create equipment repairs" ON equipment_repairs;
+CREATE POLICY "Supervisors can create equipment repairs" ON equipment_repairs
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'supervisor', 'technician'))
+  );
+
+DROP POLICY IF EXISTS "Users can update equipment repairs" ON equipment_repairs;
+CREATE POLICY "Users can update equipment repairs" ON equipment_repairs
+  FOR UPDATE USING (
+    created_by = auth.uid() OR 
+    technician_assigned_to = auth.uid() OR
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+  );
+
+-- 17. Verificar que todo esté correcto
+SELECT 
+  'inventory_items category constraint' as check_name,
+  COUNT(*) as count
+FROM pg_constraint 
+WHERE conname = 'inventory_items_category_check'
+UNION ALL
+SELECT 
+  'user_roles role constraint' as check_name,
+  COUNT(*) as count
+FROM pg_constraint 
+WHERE conname = 'user_roles_role_check'
+UNION ALL
+SELECT 
+  'material_requests table' as check_name,
+  COUNT(*) as count
+FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name = 'material_requests'
+UNION ALL
+SELECT 
+  'material_request_items table' as check_name,
+  COUNT(*) as count
+FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name = 'material_request_items'
+UNION ALL
+SELECT 
+  'stock_history table' as check_name,
+  COUNT(*) as count
+FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name = 'stock_history'
+UNION ALL
+SELECT 
+  'notifications table' as check_name,
+  COUNT(*) as count
+FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name = 'notifications'
+UNION ALL
+SELECT 
+  'equipment_repairs table' as check_name,
+  COUNT(*) as count
+FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name = 'equipment_repairs';
+```
+
+## Paso 2: Después de ejecutar el SQL
+
+Una vez que hayas ejecutado todo el SQL anterior en Supabase:
+
+1. Refresca la página de Supabase
+2. Verifica que todas las tablas aparezcan en el Table Editor
+3. Los tipos de TypeScript en el proyecto ya están actualizados
+4. Reinicia el servidor de desarrollo (npm run dev)
+
+## Paso 3: Cambios en el código ya aplicados
+
+✅ Actualizado `/src/integrations/supabase/types.ts` con las nuevas tablas y enums
+✅ Actualizado `useInventoryItems` para aceptar 'clothing' y 'epp'
+✅ Actualizado interfaz `Notification` para coincidir con el esquema de la base de datos
+
+## Errores pendientes que se resolverán automáticamente
+
+Después de ejecutar el SQL, estos errores desaparecerán porque las tablas estarán correctamente configuradas en Supabase:
+- Errores de material_requests
+- Errores de material_request_items  
+- Errores de stock_history
+- Errores de notifications
+- Errores de equipment_repairs
+- Errores de enums (bodeguero, equipment, clothing, epp)
+
+## Nota Importante
+
+NO regeneres los tipos de TypeScript de Supabase hasta que hayas ejecutado todo el SQL. Los tipos ya están actualizados manualmente en el código.

@@ -76,7 +76,7 @@ export interface UserRole {
 }
 
 // ============ INVENTORY ITEMS ============
-export function useInventoryItems(category?: 'material' | 'tool' | 'equipment') {
+export function useInventoryItems(category?: 'material' | 'tool' | 'equipment' | 'clothing' | 'epp') {
   return useQuery({
     queryKey: ['inventory-items', category],
     queryFn: async () => {
@@ -1042,23 +1042,18 @@ export function useDispatchMaterialRequest() {
 // ============ NOTIFICATIONS ============
 export interface Notification {
   id: string;
-  title: string;
-  description: string | null;
-  notification_type: 'vehicle_report' | 'material_request';
-  vehicle_id: string | null;
-  material_request_id: string | null;
-  created_by: string;
   recipient_role: 'admin' | 'supervisor' | 'technician' | 'bodeguero';
-  read_at: string | null;
-  read_by: string | null;
+  recipient_id: string | null;
+  title: string;
+  message: string;
+  read: boolean;
   created_at: string;
-  updated_at: string;
 }
 
 export function useCreateNotification() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (notification: Omit<Notification, 'id' | 'read_at' | 'read_by' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (notification: Omit<Notification, 'id' | 'read' | 'created_at'>) => {
       const { data, error } = await supabase
         .from('notifications')
         .insert(notification)
@@ -1106,7 +1101,7 @@ export function useMarkNotificationAsRead() {
     mutationFn: async ({ notificationId, userId }: { notificationId: string; userId: string }) => {
       const { data, error } = await supabase
         .from('notifications')
-        .update({ read_at: new Date().toISOString(), read_by: userId })
+        .update({ read: true })
         .eq('id', notificationId)
         .select()
         .single();

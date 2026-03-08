@@ -237,6 +237,250 @@ export type Database = {
         }
         Relationships: []
       }
+      material_requests: {
+        Row: {
+          id: string
+          requester_id: string
+          request_date: string
+          status: Database["public"]["Enums"]["request_status"]
+          approved_by: string | null
+          approved_date: string | null
+          rejected_by: string | null
+          rejected_date: string | null
+          notes: string | null
+          ready_for_pickup: boolean
+          marked_ready_by: string | null
+          marked_ready_at: string | null
+          picked_up_by: string | null
+          picked_up_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          requester_id: string
+          request_date?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          approved_by?: string | null
+          approved_date?: string | null
+          rejected_by?: string | null
+          rejected_date?: string | null
+          notes?: string | null
+          ready_for_pickup?: boolean
+          marked_ready_by?: string | null
+          marked_ready_at?: string | null
+          picked_up_by?: string | null
+          picked_up_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          requester_id?: string
+          request_date?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          approved_by?: string | null
+          approved_date?: string | null
+          rejected_by?: string | null
+          rejected_date?: string | null
+          notes?: string | null
+          ready_for_pickup?: boolean
+          marked_ready_by?: string | null
+          marked_ready_at?: string | null
+          picked_up_by?: string | null
+          picked_up_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          }
+        ]
+      }
+      material_request_items: {
+        Row: {
+          id: string
+          request_id: string
+          material_id: string
+          quantity_requested: number
+          quantity_approved: number | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          material_id: string
+          quantity_requested: number
+          quantity_approved?: number | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          material_id?: string
+          quantity_requested?: number
+          quantity_approved?: number | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_request_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "material_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_request_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      stock_history: {
+        Row: {
+          id: string
+          material_id: string
+          quantity_change: number
+          previous_quantity: number
+          new_quantity: number
+          change_type: string
+          changed_by: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          material_id: string
+          quantity_change: number
+          previous_quantity: number
+          new_quantity: number
+          change_type: string
+          changed_by?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          material_id?: string
+          quantity_change?: number
+          previous_quantity?: number
+          new_quantity?: number
+          change_type?: string
+          changed_by?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_history_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          recipient_role: Database["public"]["Enums"]["app_role"]
+          recipient_id: string | null
+          title: string
+          message: string
+          read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          recipient_role: Database["public"]["Enums"]["app_role"]
+          recipient_id?: string | null
+          title: string
+          message: string
+          read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          recipient_role?: Database["public"]["Enums"]["app_role"]
+          recipient_id?: string | null
+          title?: string
+          message?: string
+          read?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      equipment_repairs: {
+        Row: {
+          id: string
+          equipment_name: string
+          source: Database["public"]["Enums"]["repair_source"]
+          description: string | null
+          status: Database["public"]["Enums"]["repair_status"]
+          entry_date: string
+          estimated_repair_date: string | null
+          completion_date: string | null
+          technician_assigned_to: string | null
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          equipment_name: string
+          source: Database["public"]["Enums"]["repair_source"]
+          description?: string | null
+          status?: Database["public"]["Enums"]["repair_status"]
+          entry_date?: string
+          estimated_repair_date?: string | null
+          completion_date?: string | null
+          technician_assigned_to?: string | null
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          equipment_name?: string
+          source?: Database["public"]["Enums"]["repair_source"]
+          description?: string | null
+          status?: Database["public"]["Enums"]["repair_status"]
+          entry_date?: string
+          estimated_repair_date?: string | null
+          completion_date?: string | null
+          technician_assigned_to?: string | null
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_repairs_technician_assigned_to_fkey"
+            columns: ["technician_assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "equipment_repairs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -255,10 +499,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "supervisor" | "technician"
-      item_category: "material" | "tool"
+      app_role: "admin" | "supervisor" | "technician" | "bodeguero"
+      item_category: "material" | "tool" | "equipment" | "clothing" | "epp"
       item_status: "available" | "borrowed" | "maintenance"
       vehicle_status: "ok" | "maintenance" | "inactive"
+      request_status: "pending" | "approved" | "rejected" | "dispatched" | "returned"
+      repair_status: "ingresado" | "en_reparacion" | "reparado" | "no_reparable"
+      repair_source: "interno" | "externo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -386,10 +633,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "supervisor", "technician"],
-      item_category: ["material", "tool"],
+      app_role: ["admin", "supervisor", "technician", "bodeguero"],
+      item_category: ["material", "tool", "equipment", "clothing", "epp"],
       item_status: ["available", "borrowed", "maintenance"],
       vehicle_status: ["ok", "maintenance", "inactive"],
+      request_status: ["pending", "approved", "rejected", "dispatched", "returned"],
+      repair_status: ["ingresado", "en_reparacion", "reparado", "no_reparable"],
+      repair_source: ["interno", "externo"],
     },
   },
 } as const
