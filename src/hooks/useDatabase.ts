@@ -556,58 +556,80 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ email, password, name, role }: { email: string; password: string; name: string; role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' }) => {
-      if (!supabaseAdmin) {
-        throw new Error('Admin client no está configurado. Agrega VITE_SUPABASE_SERVICE_ROLE_KEY al archivo .env');
-      }
+      // Check if we're in production (Cloudflare Pages) or development
+      const isProduction = !supabaseAdmin;
 
-      // 1. Create auth user with metadata using admin client
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          name,
-        },
-      });
+      if (isProduction) {
+        // Use Cloudflare Pages Function for production
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No estás autenticado');
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('No se pudo crear el usuario');
-
-      const userId = authData.user.id;
-
-      // 2. Wait a moment for the trigger to create the profile
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // 3. Update profile with correct name using admin client
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          name,
-          active: true,
-        })
-        .eq('user_id', userId);
-
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
-        // Don't throw here, profile might not exist yet
-      }
-
-      // 4. Insert user role using admin client
-      const { error: roleError } = await supabaseAdmin
-        .from('user_roles')
-        .upsert({
-          user_id: userId,
-          role,
-        }, {
-          onConflict: 'user_id',
+        const response = await fetch('/api/create-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ email, password, name, role }),
         });
 
-      if (roleError) {
-        console.error('Error inserting role:', roleError);
-        throw new Error('Error al asignar el rol: ' + roleError.message);
-      }
+        const data = await response.json();
 
-      return authData.user;
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al crear usuario');
+        }
+
+        return data.user;
+      } else {
+        // Use admin client for development
+        // 1. Create auth user with metadata using admin client
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            name,
+          },
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('No se pudo crear el usuario');
+
+        const userId = authData.user.id;
+
+        // 2. Wait a moment for the trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // 3. Update profile with correct name using admin client
+        const { error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .update({
+            name,
+            active: true,
+          })
+          .eq('user_id', userId);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
+
+        // 4. Insert user role using admin client
+        const { error: roleError } = await supabaseAdmin
+          .from('user_roles')
+          .upsert({
+            user_id: userId,
+            role,
+          }, {
+            onConflict: 'user_id',
+          });
+
+        if (roleError) {
+          console.error('Error inserting role:', roleError);
+          throw new Error('Error al asignar el rol: ' + roleError.message);
+        }
+
+        return authData.user;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
