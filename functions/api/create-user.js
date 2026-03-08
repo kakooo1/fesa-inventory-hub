@@ -131,8 +131,8 @@ export async function onRequestPost(context) {
     const authData = await createUserResponse.json();
     const userId = authData.id;
 
-    // Wait for trigger to create profile
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait longer for trigger to create profile and initial role
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Update profile
     await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${userId}`, {
@@ -149,7 +149,7 @@ export async function onRequestPost(context) {
       }),
     });
 
-    // First, delete any existing roles for this user (in case trigger created one)
+    // Delete ALL existing roles for this user (including any created by triggers)
     await fetch(`${SUPABASE_URL}/rest/v1/user_roles?user_id=eq.${userId}`, {
       method: 'DELETE',
       headers: {
@@ -158,7 +158,10 @@ export async function onRequestPost(context) {
       },
     });
 
-    // Then insert the correct role
+    // Small delay to ensure delete completes
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Insert the correct role specified by admin
     const roleInsertResponse = await fetch(`${SUPABASE_URL}/rest/v1/user_roles`, {
       method: 'POST',
       headers: {

@@ -606,8 +606,8 @@ export function useCreateUser() {
 
         const userId = authData.user.id;
 
-        // 2. Wait a moment for the trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // 2. Wait longer for the trigger to create the profile and initial role
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // 3. Update profile with correct name using admin client
         const { error: profileError } = await supabaseAdmin
@@ -622,12 +622,16 @@ export function useCreateUser() {
           console.error('Error updating profile:', profileError);
         }
 
-        // 4. Delete any existing roles and insert the correct one
+        // 4. Delete ALL existing roles (including any created by triggers)
         await supabaseAdmin
           .from('user_roles')
           .delete()
           .eq('user_id', userId);
 
+        // Small delay to ensure delete completes
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // 5. Insert the correct role specified by admin
         const { error: roleError } = await supabaseAdmin
           .from('user_roles')
           .insert({
