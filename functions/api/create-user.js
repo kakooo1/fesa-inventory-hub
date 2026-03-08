@@ -149,7 +149,16 @@ export async function onRequestPost(context) {
       }),
     });
 
-    // Insert user role (without upsert, just insert)
+    // First, delete any existing roles for this user (in case trigger created one)
+    await fetch(`${SUPABASE_URL}/rest/v1/user_roles?user_id=eq.${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+      },
+    });
+
+    // Then insert the correct role
     const roleInsertResponse = await fetch(`${SUPABASE_URL}/rest/v1/user_roles`, {
       method: 'POST',
       headers: {

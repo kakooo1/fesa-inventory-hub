@@ -514,11 +514,20 @@ export function useUpdateUserRole() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' }) => {
-      const { error } = await supabase
+      // Delete existing role(s) for this user
+      const { error: deleteError } = await supabase
         .from('user_roles')
-        .update({ role })
+        .delete()
         .eq('user_id', userId);
-      if (error) throw error;
+      
+      if (deleteError) throw deleteError;
+
+      // Insert new role
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role });
+      
+      if (insertError) throw insertError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
@@ -613,7 +622,12 @@ export function useCreateUser() {
           console.error('Error updating profile:', profileError);
         }
 
-        // 4. Insert user role using admin client (simple insert, no upsert)
+        // 4. Delete any existing roles and insert the correct one
+        await supabaseAdmin
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId);
+
         const { error: roleError } = await supabaseAdmin
           .from('user_roles')
           .insert({
