@@ -52,13 +52,13 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<ProfileWithRole | null>(null);
 
   // Only admins can access this page
-  if (userProfile?.role !== 'admin') {
+  if (!userProfile || userProfile.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
   const filteredUsers = (profiles as ProfileWithRole[]).filter(u => 
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
+    u?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    u?.email?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleEdit = (profile: ProfileWithRole) => {
@@ -87,15 +87,16 @@ export default function UsersPage() {
       key: 'name', 
       header: 'Usuario',
       render: (profile) => {
-        const RoleIcon = roleIcons[profile.role];
+        if (!profile) return null;
+        const RoleIcon = roleIcons[profile.role] || Users;
         return (
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 text-primary p-2 rounded-full">
               <RoleIcon className="h-4 w-4" />
             </div>
             <div>
-              <p className="font-medium">{profile.name}</p>
-              <p className="text-sm text-muted-foreground">{profile.email}</p>
+              <p className="font-medium">{profile.name || 'Sin nombre'}</p>
+              <p className="text-sm text-muted-foreground">{profile.email || ''}</p>
             </div>
           </div>
         );
@@ -104,53 +105,69 @@ export default function UsersPage() {
     { 
       key: 'role', 
       header: 'Rol',
-      render: (profile) => (
-        <StatusBadge status={
-          profile.role === 'admin' ? 'info' : 
-          profile.role === 'supervisor' ? 'warning' : 'neutral'
-        }>
-          {roleLabels[profile.role]}
-        </StatusBadge>
-      )
+      render: (profile) => {
+        if (!profile || !profile.role) return null;
+        return (
+          <StatusBadge status={
+            profile.role === 'admin' ? 'info' : 
+            profile.role === 'supervisor' ? 'warning' : 'neutral'
+          }>
+            {roleLabels[profile.role] || profile.role}
+          </StatusBadge>
+        );
+      }
     },
     { 
       key: 'status', 
       header: 'Estado',
-      render: (profile) => (
-        <StatusBadge status={profile.active ? 'success' : 'danger'}>
-          {profile.active ? 'Activo' : 'Inactivo'}
-        </StatusBadge>
-      )
+      render: (profile) => {
+        if (!profile) return null;
+        return (
+          <StatusBadge status={profile.active ? 'success' : 'danger'}>
+            {profile.active ? 'Activo' : 'Inactivo'}
+          </StatusBadge>
+        );
+      }
     },
     { 
       key: 'createdAt', 
       header: 'Fecha creación',
-      render: (profile) => format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es })
+      render: (profile) => {
+        if (!profile || !profile.created_at) return null;
+        try {
+          return format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es });
+        } catch (error) {
+          return 'Fecha inválida';
+        }
+      }
     },
     { 
       key: 'actions', 
       header: 'Acciones',
       className: 'text-right',
-      render: (profile) => (
-        <div className="flex justify-end gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleEdit(profile); }}
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); handleDelete(profile); }}
-            disabled={profile.user_id === user?.id}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      )
+      render: (profile) => {
+        if (!profile) return null;
+        return (
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); handleEdit(profile); }}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); handleDelete(profile); }}
+              disabled={profile.user_id === user?.id}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      }
     },
   ];
 
@@ -194,7 +211,7 @@ export default function UsersPage() {
             <Shield className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{profiles.filter(u => u.role === 'admin').length}</p>
+            <p className="text-2xl font-bold">{profiles.filter(u => u?.role === 'admin').length}</p>
             <p className="text-sm text-muted-foreground">Administradores</p>
           </div>
         </div>
@@ -203,7 +220,7 @@ export default function UsersPage() {
             <UserCog className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{profiles.filter(u => u.role === 'supervisor').length}</p>
+            <p className="text-2xl font-bold">{profiles.filter(u => u?.role === 'supervisor').length}</p>
             <p className="text-sm text-muted-foreground">Supervisores</p>
           </div>
         </div>
@@ -212,8 +229,8 @@ export default function UsersPage() {
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{profiles.filter(u => u.role === 'technician').length}</p>
-            <p className="text-sm text-muted-foreground">Técnicos</p>
+            <p className="text-2xl font-bold">{profiles.filter(u => u?.role === 'technician' || u?.role === 'bodeguero').length}</p>
+            <p className="text-sm text-muted-foreground">Técnicos y Bodegueros</p>
           </div>
         </div>
       </div>

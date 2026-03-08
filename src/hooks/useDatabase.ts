@@ -449,7 +449,7 @@ export function useProfiles() {
         const userRole = roles.find(r => r.user_id === profile.user_id);
         return {
           ...profile,
-          role: (userRole?.role as 'admin' | 'supervisor' | 'technician') || 'technician',
+          role: (userRole?.role as 'admin' | 'supervisor' | 'technician' | 'bodeguero') || 'technician',
         };
       });
     },
@@ -534,19 +534,19 @@ export function useDeleteUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (userId: string) => {
-      // Delete profile (cascade will handle user_roles)
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', userId);
+      // Call the database function to delete the user
+      // This will handle deleting from auth.users and cascade to profiles and user_roles
+      const { error } = await supabase.rpc('delete_user', { user_id: userId });
+      
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      toast.success('Usuario eliminado');
+      toast.success('Usuario eliminado correctamente');
     },
-    onError: (error) => {
-      toast.error('Error: ' + error.message);
+    onError: (error: any) => {
+      console.error('Error deleting user:', error);
+      toast.error('Error al eliminar usuario: ' + (error.message || 'Error desconocido'));
     },
   });
 }
@@ -555,23 +555,25 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ email, password, name, role }: { email: string; password: string; name: string; role: 'admin' | 'supervisor' | 'technician' | 'bodeguero' }) => {
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // 1. Create auth user with metadata
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
-        options: {
-          data: {
-            name,
-          },
+        email_confirm: true,
+        user_metadata: {
+          name,
         },
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error('No user data returned');
+      if (!authData.user) throw new Error('No se pudo crear el usuario');
 
       const userId = authData.user.id;
 
-      // 2. Update profile (trigger creates it, we just update the name)
+      // 2. Wait a moment for the trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 3. Update profile with correct name
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -580,17 +582,30 @@ export function useCreateUser() {
         })
         .eq('user_id', userId);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        // Don't throw here, profile might not exist yet
+      }
 
-      // 3. Create user role
+      // 4. Update or insert user role (in case trigger already created it)
       const { error: roleError } = await supabase
         .from('user_roles')
-        .insert({
+        .upsert({
           user_id: userId,
           role,
+        }, {
+          onConflict: 'user_id,role',
         });
 
-      if (roleError) throw roleError;
+      // If upsert failed, try update
+      if (roleError) {
+        const { error: updateError } = await supabase
+          .from('user_roles')
+          .update({ role })
+          .eq('user_id', userId);
+        
+        if (updateError) throw updateError;
+      }
 
       return authData.user;
     },
@@ -598,8 +613,9 @@ export function useCreateUser() {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       toast.success('Usuario creado correctamente');
     },
-    onError: (error) => {
-      toast.error('Error al crear usuario: ' + error.message);
+    onError: (error: any) => {
+      console.error('Error creating user:', error);
+      toast.error('Error al crear usuario: ' + (error.message || 'Error desconocido'));
     },
   });
 }
