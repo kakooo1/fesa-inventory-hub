@@ -613,14 +613,12 @@ export function useCreateUser() {
           console.error('Error updating profile:', profileError);
         }
 
-        // 4. Insert user role using admin client
+        // 4. Insert user role using admin client (simple insert, no upsert)
         const { error: roleError } = await supabaseAdmin
           .from('user_roles')
-          .upsert({
+          .insert({
             user_id: userId,
             role,
-          }, {
-            onConflict: 'user_id',
           });
 
         if (roleError) {

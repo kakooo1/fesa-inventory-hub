@@ -149,14 +149,14 @@ export async function onRequestPost(context) {
       }),
     });
 
-    // Insert user role
+    // Insert user role (without upsert, just insert)
     const roleInsertResponse = await fetch(`${SUPABASE_URL}/rest/v1/user_roles`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'apikey': SUPABASE_SERVICE_ROLE_KEY,
         'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates',
+        'Prefer': 'return=minimal',
       },
       body: JSON.stringify({
         user_id: userId,
