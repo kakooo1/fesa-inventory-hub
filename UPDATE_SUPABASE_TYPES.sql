@@ -148,7 +148,7 @@ CREATE POLICY "Users can view their own requests" ON material_requests
   FOR SELECT USING (
     auth.uid() IN (SELECT user_id FROM profiles) OR
     requester_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'bodeguero'))
   );
 
 DROP POLICY IF EXISTS "Users can create requests" ON material_requests;
@@ -160,7 +160,7 @@ CREATE POLICY "Users can create requests" ON material_requests
 DROP POLICY IF EXISTS "Admins can update requests" ON material_requests;
 CREATE POLICY "Admins can update requests" ON material_requests
   FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'bodeguero'))
   );
 
 -- Políticas RLS para material_request_items
@@ -170,7 +170,7 @@ CREATE POLICY "Users can view request items" ON material_request_items
     EXISTS (
       SELECT 1 FROM material_requests mr 
       WHERE mr.id = request_id 
-      AND (mr.requester_id = auth.uid() OR EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero')))
+      AND (mr.requester_id = auth.uid() OR EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'bodeguero')))
     )
   );
 
@@ -188,13 +188,13 @@ CREATE POLICY "Users can insert request items" ON material_request_items
 DROP POLICY IF EXISTS "Users can view stock history" ON stock_history;
 CREATE POLICY "Users can view stock history" ON stock_history
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero', 'supervisor'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'bodeguero', 'supervisor'))
   );
 
 DROP POLICY IF EXISTS "Admins can insert stock history" ON stock_history;
 CREATE POLICY "Admins can insert stock history" ON stock_history
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'bodeguero'))
   );
 
 -- Políticas RLS para notifications
@@ -202,7 +202,7 @@ DROP POLICY IF EXISTS "Users can view their notifications" ON notifications;
 CREATE POLICY "Users can view their notifications" ON notifications
   FOR SELECT USING (
     recipient_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = recipient_role)
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text = recipient_role)
   );
 
 DROP POLICY IF EXISTS "System can create notifications" ON notifications;
@@ -213,20 +213,20 @@ DROP POLICY IF EXISTS "Users can update their notifications" ON notifications;
 CREATE POLICY "Users can update their notifications" ON notifications
   FOR UPDATE USING (
     recipient_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = recipient_role)
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text = recipient_role)
   );
 
 -- Políticas RLS para equipment_repairs
 DROP POLICY IF EXISTS "Users can view equipment repairs" ON equipment_repairs;
 CREATE POLICY "Users can view equipment repairs" ON equipment_repairs
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'supervisor', 'technician', 'bodeguero'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'supervisor', 'technician', 'bodeguero'))
   );
 
 DROP POLICY IF EXISTS "Supervisors can create equipment repairs" ON equipment_repairs;
 CREATE POLICY "Supervisors can create equipment repairs" ON equipment_repairs
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'supervisor', 'technician'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'supervisor', 'technician'))
   );
 
 DROP POLICY IF EXISTS "Users can update their equipment repairs" ON equipment_repairs;
@@ -234,7 +234,7 @@ CREATE POLICY "Users can update their equipment repairs" ON equipment_repairs
   FOR UPDATE USING (
     created_by = auth.uid() OR 
     technician_assigned_to = auth.uid() OR
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'bodeguero'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role::text IN ('admin', 'bodeguero'))
   );
 
 -- Verificar que todo esté correcto
